@@ -21,6 +21,7 @@ import { onAuthChange } from "@/lib/firebase";
 import { subscribeToUserBuilds, subscribeToBuildLogs, publishApp, createBuild } from "@/lib/firestore";
 import { useUI } from "@/store/useUI";
 import { authFetch } from "@/lib/authFetch";
+import { triggerDownload } from "@/lib/builderClient";
 
 export default function Build() {
   const router = useRouter();
@@ -202,6 +203,17 @@ export default function Build() {
       throw error;
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const handleDownload = async (build) => {
+    try {
+      showToast("Preparing download...");
+      await triggerDownload(build.id, build.appName || 'app');
+      showToast("Downloaded successfully!");
+    } catch (error) {
+      console.error("Download error:", error);
+      showToast(error.message || "Failed to download", "error");
     }
   };
 
@@ -390,15 +402,26 @@ export default function Build() {
                           🔄 Remix
                         </button>
                         {build.status === "complete" && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenPublishModal(build);
-                            }}
-                            className="flex-1 px-3 py-2 bg-gradient-to-r from-purple-500/80 to-blue-500/80 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg text-xs font-semibold transition-all shadow-md backdrop-blur-md"
-                          >
-                            📤 Publish
-                          </button>
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownload(build);
+                              }}
+                              className="flex-1 px-3 py-2 bg-green-500/80 hover:bg-green-500 text-white rounded-lg text-xs font-semibold transition-all shadow-md backdrop-blur-md"
+                            >
+                              ⬇️ Download
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenPublishModal(build);
+                              }}
+                              className="flex-1 px-3 py-2 bg-gradient-to-r from-purple-500/80 to-blue-500/80 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg text-xs font-semibold transition-all shadow-md backdrop-blur-md"
+                            >
+                              📤 Publish
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

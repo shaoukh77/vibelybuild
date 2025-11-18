@@ -141,23 +141,24 @@ function createBuildLogStream(buildId, userId, buildData) {
           timestamp: Date.now(),
         });
 
-        // Query existing logs (ordered by timestamp)
+        // Query existing logs (ordered by createdAt)
         const logsSnapshot = await db
           .collection('buildLogs')
           .where('buildId', '==', buildId)
           .where('userId', '==', userId)
-          .orderBy('timestamp', 'asc')
+          .orderBy('createdAt', 'asc')
           .limit(1000)
           .get();
 
         // Send existing logs
         logsSnapshot.forEach(doc => {
           const log = doc.data();
+          const timestamp = log.createdAt?._seconds ? log.createdAt._seconds * 1000 : Date.now();
           send({
             type: 'log',
             message: log.message,
             level: log.level || 'info',
-            timestamp: log.timestamp || Date.now(),
+            timestamp,
           });
         });
 
@@ -166,27 +167,28 @@ function createBuildLogStream(buildId, userId, buildData) {
           .collection('buildLogs')
           .where('buildId', '==', buildId)
           .where('userId', '==', userId)
-          .orderBy('timestamp', 'desc')
+          .orderBy('createdAt', 'desc')
           .limit(1);
 
         let lastLogTimestamp = logsSnapshot.docs.length > 0
-          ? logsSnapshot.docs[logsSnapshot.docs.length - 1].data().timestamp
+          ? (logsSnapshot.docs[logsSnapshot.docs.length - 1].data().createdAt?._seconds || 0) * 1000
           : 0;
 
         unsubscribeLogs = logsQuery.onSnapshot(snapshot => {
           snapshot.docChanges().forEach(change => {
             if (change.type === 'added') {
               const log = change.doc.data();
+              const logTimestamp = log.createdAt?._seconds ? log.createdAt._seconds * 1000 : Date.now();
 
               // Only send if it's a new log (after our last known timestamp)
-              if (log.timestamp > lastLogTimestamp) {
+              if (logTimestamp > lastLogTimestamp) {
                 send({
                   type: 'log',
                   message: log.message,
                   level: log.level || 'info',
-                  timestamp: log.timestamp || Date.now(),
+                  timestamp: logTimestamp,
                 });
-                lastLogTimestamp = log.timestamp;
+                lastLogTimestamp = logTimestamp;
               }
             }
           });
