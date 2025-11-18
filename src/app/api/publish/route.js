@@ -1,6 +1,5 @@
 import { nanoid } from "nanoid";
-import { adminDb } from "@/lib/firebase-admin";
-import admin from "@/lib/firebase-admin";
+import admin, { db } from "@/lib/firebaseAdmin";
 
 export async function POST(req) {
   try {
@@ -34,7 +33,7 @@ export async function POST(req) {
     }
 
     // Get build and validate using Admin SDK
-    const buildRef = adminDb.collection('builds').doc(buildId);
+    const buildRef = db.collection('builds').doc(buildId);
     const buildSnap = await buildRef.get();
 
     if (!buildSnap.exists) {
@@ -64,7 +63,7 @@ export async function POST(req) {
 
     // Create public app using Admin SDK
     const appId = nanoid();
-    const appRef = adminDb.collection('publicApps').doc(appId);
+    const appRef = db.collection('publicApps').doc(appId);
     await appRef.set({
       ownerId: userId,
       buildId,

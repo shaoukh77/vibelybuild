@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import TopNav from "@/components/TopNav";
 import { onAuthChange, signOutUser } from "@/lib/firebase";
-import { getUserBuildCount } from "@/lib/db";
+import { getUserBuilds } from "@/lib/firestore";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -18,8 +18,11 @@ export default function Profile() {
 
       if (currentUser) {
         // Get build count
-        getUserBuildCount(currentUser.uid).then(count => {
-          setBuildCount(count);
+        getUserBuilds(currentUser.uid).then(builds => {
+          setBuildCount(builds.length);
+        }).catch(error => {
+          console.error('Error getting builds:', error);
+          setBuildCount(0);
         });
       }
     });

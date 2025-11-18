@@ -15,8 +15,7 @@
 
 import { Octokit } from "@octokit/rest";
 import { AppBlueprint } from "./llmProvider";
-import { adminDb } from "./firebase-admin";
-import admin from "./firebase-admin";
+import admin, { db } from "./firebaseAdmin";
 
 export interface PublishOptions {
   buildId: string;
@@ -183,7 +182,7 @@ async function updateFirestoreAfterPublish(
   repoUrl: string
 ): Promise<void> {
   try {
-    const buildRef = adminDb.collection("builds").doc(buildId);
+    const buildRef = db.collection("builds").doc(buildId);
     await buildRef.update({
       repoUrl,
       deployStatus: "repo-created",
@@ -204,7 +203,7 @@ async function updateFirestoreWithError(
   errorMessage: string
 ): Promise<void> {
   try {
-    const buildRef = adminDb.collection("builds").doc(buildId);
+    const buildRef = db.collection("builds").doc(buildId);
     await buildRef.update({
       deployStatus: "repo-error",
       deployError: errorMessage,

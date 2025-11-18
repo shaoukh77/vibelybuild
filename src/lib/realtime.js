@@ -3,7 +3,7 @@
  * Server-Sent Events for build log streaming
  */
 
-import { adminDb } from './firebase-admin';
+import { db } from './firebaseAdmin';
 
 /**
  * Create SSE stream for build logs
@@ -27,7 +27,7 @@ export function createBuildLogStream(buildId, userId) {
         send({ type: 'connected', buildId });
 
         // Get build to verify ownership
-        const buildRef = adminDb.collection('builds').doc(buildId);
+        const buildRef = db.collection('builds').doc(buildId);
         const buildSnap = await buildRef.get();
 
         if (!buildSnap.exists) {
@@ -53,7 +53,7 @@ export function createBuildLogStream(buildId, userId) {
         });
 
         // Get existing logs
-        const logsSnapshot = await adminDb
+        const logsSnapshot = await db
           .collection('buildLogs')
           .where('buildId', '==', buildId)
           .where('userId', '==', userId)
@@ -73,7 +73,7 @@ export function createBuildLogStream(buildId, userId) {
         });
 
         // Subscribe to new logs
-        const logsQuery = adminDb
+        const logsQuery = db
           .collection('buildLogs')
           .where('buildId', '==', buildId)
           .where('userId', '==', userId)

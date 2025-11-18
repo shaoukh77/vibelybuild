@@ -3,7 +3,7 @@
  * Verifies Firebase ID tokens from Authorization header
  */
 
-import { adminAuth } from './firebase-admin';
+import { auth } from './firebaseAdmin';
 import { cleanError } from '@/utils/cleanError';
 
 /**
@@ -37,7 +37,7 @@ export async function verifyUser(request) {
   }
 
   try {
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(token);
 
     return {
       uid: decodedToken.uid,

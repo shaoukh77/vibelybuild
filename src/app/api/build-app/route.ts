@@ -18,8 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateAppBlueprint, AppBlueprint } from "@/lib/llmProvider";
 import { generateProjectFromBlueprint } from "@/lib/codegen";
 import { publishToGitHub } from "@/lib/publisher";
-import { adminDb } from "@/lib/firebase-admin";
-import admin from "@/lib/firebase-admin";
+import admin, { db } from "@/lib/firebaseAdmin";
 import { verifyUser, verifyUserOwnership } from "@/lib/verifyUser";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +61,7 @@ export async function POST(request: NextRequest) {
     console.log(`[Build ${buildId}] Starting VibeCode build for user ${userId}`);
 
     // Verify build document exists and user owns it
-    const buildRef = adminDb.collection("builds").doc(buildId);
+    const buildRef = db.collection("builds").doc(buildId);
     const buildSnap = await buildRef.get();
 
     if (!buildSnap.exists) {
@@ -114,7 +113,7 @@ async function executeBuildPipeline({
   prompt: string;
   target: "web" | "ios" | "android" | "multi";
 }) {
-  const buildRef = adminDb.collection("builds").doc(buildId);
+  const buildRef = db.collection("builds").doc(buildId);
 
   try {
     // Step 1: Update status to running
@@ -324,7 +323,7 @@ async function updateBuildStatusAndLog(
   status: string,
   logMessage: string
 ) {
-  const buildRef = adminDb.collection("builds").doc(buildId);
+  const buildRef = db.collection("builds").doc(buildId);
 
   // Update build status
   await buildRef.update({
@@ -340,7 +339,7 @@ async function updateBuildStatusAndLog(
  * Helper: Create a log entry in /buildLogs collection
  */
 async function createBuildLog(buildId: string, userId: string, message: string) {
-  await adminDb.collection("buildLogs").add({
+  await db.collection("buildLogs").add({
     buildId,
     userId,
     message,
