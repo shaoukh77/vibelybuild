@@ -79,9 +79,45 @@ function initializeFirebaseAdmin() {
   }
 }
 
-// Initialize immediately
-const { app: adminApp, db: adminDb, auth: adminAuth } = initializeFirebaseAdmin();
+// Lazy initialization state
+let initialized = false;
+let _adminApp, _adminDb, _adminAuth;
 
-// Export singleton instances
-export { adminApp, adminDb, adminAuth };
+// Lazy initialization helper
+function ensureInitialized() {
+  if (!initialized) {
+    const result = initializeFirebaseAdmin();
+    _adminApp = result.app;
+    _adminDb = result.db;
+    _adminAuth = result.auth;
+    initialized = true;
+  }
+}
+
+// Export lazy proxies that initialize on first access
+export const adminApp = new Proxy({}, {
+  get: (target, prop) => {
+    ensureInitialized();
+    return _adminApp[prop];
+  },
+  apply: (target, thisArg, args) => {
+    ensureInitialized();
+    return _adminApp.apply(thisArg, args);
+  }
+});
+
+export const adminDb = new Proxy({}, {
+  get: (target, prop) => {
+    ensureInitialized();
+    return _adminDb[prop];
+  }
+});
+
+export const adminAuth = new Proxy({}, {
+  get: (target, prop) => {
+    ensureInitialized();
+    return _adminAuth[prop];
+  }
+});
+
 export default admin;
