@@ -1,0 +1,270 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /*
+     * COLLECTIONS OVERVIEW:
+     * - builds: User's AI build jobs (user-scoped via userId field)
+     * - buildLogs: Build logs for each build (separate collection, user-scoped)
+     * - publicApps: Published apps visible to everyone (ownerUid/ownerId field)
+     * - users/{uid}/apps: User's private apps subcollection
+     * - users/{uid}/adCampaigns: User's ad campaigns subcollection
+     * - users/{uid}/marketingCampaigns: User's marketing campaigns subcollection
+     * - users/{uid}/following: Users this user follows
+     * - users/{uid}/followers: Users following this user
+     * - users/{uid}/notifications: User's notifications
+     * - conversations: Chat conversations (participants array)
+     * - conversations/{id}/messages: Messages in a conversation
+     * - posts: Social feed posts (userId field)
+     * - posts/{id}/likes: Likes on a post
+     * - posts/{id}/comments: Comments on a post
+     *
+     * VibeCode Build Pipeline:
+     * The /builds collection stores app build jobs with the following schema:
+     * {
+     *   userId: string,              // Owner's UID (matches request.auth.uid)
+     *   prompt: string,              // User's app idea
+     *   target: string,              // "web" | "ios" | "android" | "multi"
+     *   status: string,              // "queued" | "running" | "complete" | "failed"
+     *   appName: string,             // Generated app name
+     *   blueprint: object,           // LLM-generated app blueprint (pages, dataModel, etc.)
+     *   artifactUrl: string,         // Placeholder for GitHub repo URL
+     *   repoUrl: string,             // GitHub repository URL (stub)
+     *   deployStatus: string,        // "not_started" | "ready_for_publish"
+     *   createdAt: timestamp,
+     *   updatedAt: timestamp,
+     *   completedAt: timestamp
+     * }
+     *
+     * The /buildLogs collection stores individual log entries:
+     * {
+     *   buildId: string,             // Reference to build document
+     *   userId: string,              // Owner's UID (matches request.auth.uid)
+     *   message: string,             // Log message text
+     *   createdAt: timestamp
+     * }
+     *
+     * Required Indexes (if using orderBy in queries):
+     * - Collection: builds
+     *   Fields: userId (Ascending), createdAt (Descending)
+     *   (Note: Current implementation sorts client-side to avoid requiring this index)
+     * - Collection: buildLogs
+     *   Fields: buildId (Ascending), userId (Ascending), createdAt (Ascending)
+     *   (Required for real-time log streaming)
+     */
+
+    // Builds collection
+    match /builds/{buildId} {
+      // Allow users to read their own builds
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Allow users to create their own builds
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Allow users to update their own builds
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      // No delete permission
+      allow delete: if false;
+    }
+
+    // Build logs collection - separate logs for each build
+    match /buildLogs/{logId} {
+      // Allow users to read logs for their own builds
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Allow users to create logs for their own builds
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // No update or delete
+      allow update, delete: if false;
+    }
+
+    // Public apps collection - readable by everyone
+    match /publicApps/{appId} {
+      // Anyone can read public apps (including unpublished for now)
+      allow read: if true;
+      // Authenticated users can create/update their own apps
+      // Check both ownerUid and ownerId for backward compatibility
+      allow create, update, delete: if request.auth != null
+        && (request.resource.data.ownerUid == request.auth.uid
+            || request.resource.data.ownerId == request.auth.uid);
+    }
+
+    // Users' private apps collection
+    match /users/{uid}/apps/{appId} {
+      // Users can read/write their own apps
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Users' ad campaigns collection
+    match /users/{uid}/adCampaigns/{campaignId} {
+      // Users can read/write their own ad campaigns
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Users' marketing campaigns collection
+    match /users/{uid}/marketingCampaigns/{campaignId} {
+      // Users can read/write their own marketing campaigns
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Helper function for authentication check
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.admin == true;
+    }
+
+    // Helper function to check if user is owner of a post
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    // Users collection (for storing user profiles and roles)
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow write: if isOwner(userId);
+
+      // Notifications subcollection: user's notifications
+      match /notifications/{notificationId} {
+        // Users can only read and write their own notifications
+        allow read, update, delete: if isOwner(userId);
+        // Cloud Functions can create notifications (via admin SDK)
+        // Users cannot create their own notifications directly
+        allow create: if false;
+      }
+
+      // Following subcollection: users this user is following
+      match /following/{targetUid} {
+        // Anyone can read who a user is following
+        allow read: if signedIn();
+        // Only the user can add/remove people from their following list
+        allow create, delete: if isOwner(userId);
+      }
+
+      // Followers subcollection: users following this user
+      match /followers/{sourceUid} {
+        // Anyone can read a user's followers
+        allow read: if signedIn();
+        // Only the follower can add/remove themselves from this list
+        allow create, delete: if isOwner(sourceUid);
+      }
+    }
+
+    // Notifications collection
+    match /notifications/{userId} {
+      // Users can only read their own notification collections
+      allow read: if isOwner(userId);
+
+      // Notifications items subcollection
+      match /items/{notificationId} {
+        // Users can read and update (mark as read) their own notifications
+        allow read, update: if isOwner(userId);
+        // Cloud Functions can create notifications (via admin SDK)
+        // Users cannot create their own notifications directly
+        allow create: if false;
+        // Users can delete their own notifications
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Conversations collection (Messenger)
+    match /conversations/{conversationId} {
+      // Allow users to read conversations they're part of
+      allow read: if request.auth != null && request.auth.uid in resource.data.participants;
+      // Allow authenticated users to create conversations
+      allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
+      // Allow participants to update conversations (for lastMessage, updatedAt)
+      allow update: if request.auth != null && request.auth.uid in resource.data.participants;
+      // No delete
+      allow delete: if false;
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Allow participants to read messages
+        allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        // Allow participants to create messages
+        allow create: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
+          && request.resource.data.senderId == request.auth.uid;
+        // Allow participants to update messages (for readBy)
+        allow update: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        // No delete
+        allow delete: if false;
+      }
+    }
+
+    // Posts collection (Social Feed)
+    match /posts/{postId} {
+      // Anyone can read posts (including soft-deleted ones for now)
+      allow read: if true;
+
+      // Authenticated users can create posts with their own userId
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.status == "active";
+
+      // Users can update their own posts (for editing or soft delete)
+      // Validate that userId cannot be changed and content is valid if not deleting
+      allow update: if isOwner(resource.data.userId)
+        && request.resource.data.userId == resource.data.userId
+        && (
+          // Soft delete: owner marks as deleted
+          (request.resource.data.status == "deleted"
+            && request.resource.data.deletedAt == request.time)
+          ||
+          // Edit content: must be valid string
+          (request.resource.data.status == "active"
+            && request.resource.data.content is string
+            && request.resource.data.content.size() > 0
+            && request.resource.data.content.size() <= 1000)
+        );
+
+      // Hard delete: only admins can permanently delete, owners can soft delete via update
+      allow delete: if isAdmin();
+
+      // Likes subcollection
+      match /likes/{userId} {
+        // Anyone can read likes
+        allow read: if true;
+        // Users can only create/update/delete their own like
+        allow create, update, delete: if signedIn() && userId == request.auth.uid;
+      }
+
+      // Comments subcollection
+      match /comments/{commentId} {
+        // Anyone can read comments
+        allow read: if true;
+        // Authenticated users can create comments with their own userId
+        allow create: if signedIn()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.createdAt == request.time;
+        // Users can update/delete their own comments
+        allow update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+      }
+    }
+
+    // Deny access to all other documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// ============================================================
+// IMPORTANT: DEPLOYMENT REQUIRED
+// ============================================================
+// These rules have been updated. To apply them:
+// 1. Go to Firebase Console -> Firestore Database -> Rules
+// 2. Copy the entire content of this file
+// 3. Paste into the Firebase Console rules editor
+// 4. Click "Publish" to deploy the rules
+//
+// Until you deploy these rules, you will see permission-denied
+// errors in your browser console.
+// ============================================================

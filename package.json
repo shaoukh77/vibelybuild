@@ -1,0 +1,42 @@
+{
+  "name": "vibelybuild",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "start:render": "next start -p $PORT",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.69.0",
+    "@google/generative-ai": "^0.24.1",
+    "@octokit/rest": "^22.0.1",
+    "@opentelemetry/api": "^1.9.0",
+    "@radix-ui/react-slot": "^1.2.4",
+    "date-fns": "^4.1.0",
+    "firebase": "^10.14.1",
+    "firebase-admin": "^13.6.0",
+    "groq-sdk": "^0.35.0",
+    "lucide-react": "^0.553.0",
+    "nanoid": "^5.1.6",
+    "next": "16.0.1",
+    "openai": "^6.9.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.5",
+    "autoprefixer": "^10.4.19",
+    "cross-env": "^10.1.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.1",
+    "lightningcss": "^1.30.2",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.9.3"
+  }
+}

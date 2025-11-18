@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper function
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Post images
+    match /posts/{userId}/{imageFile} {
+      // Allow authenticated users to read any post image
+      allow read: if true;
+
+      // Allow authenticated users to upload their own post images
+      // Max size: 5MB
+      // Allowed types: jpg, png, webp
+      allow create: if isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+
+      // Allow users to delete their own post images
+      allow delete: if isAuthenticated()
+        && request.auth.uid == userId;
+    }
+
+    // Deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
