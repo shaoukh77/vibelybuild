@@ -1,4 +1,4 @@
-import { adminDb } from '@/lib/firebaseAdmin';
+import { db } from '@/lib/firebaseAdmin';
 import admin from '@/lib/firebaseAdmin';
 import { verifyAuthWithFallback } from '@/lib/authMiddleware';
 import { NextResponse } from 'next/server';
@@ -18,7 +18,7 @@ export async function POST(req, { params }) {
     const userId = authUser.uid;
 
     // Get build document
-    const buildRef = adminDb.collection('builds').doc(buildId);
+    const buildRef = db.collection('builds').doc(buildId);
     const buildSnap = await buildRef.get();
 
     if (!buildSnap.exists) {
@@ -82,10 +82,10 @@ export async function POST(req, { params }) {
       likes: 0,
     };
 
-    await adminDb.collection('publicApps').doc(appId).set(appData);
+    await db.collection('publicApps').doc(appId).set(appData);
 
     // Save to user's apps subcollection
-    await adminDb
+    await db
       .collection('users')
       .doc(userId)
       .collection('apps')
@@ -127,7 +127,7 @@ export async function PATCH(req, { params }) {
     const userId = authUser.uid;
 
     // Get the app to verify ownership using Admin SDK
-    const appRef = adminDb.collection('publicApps').doc(id);
+    const appRef = db.collection('publicApps').doc(id);
     const appSnap = await appRef.get();
 
     if (!appSnap.exists) {
@@ -179,7 +179,7 @@ export async function DELETE(req, { params }) {
     const userId = authUser.uid;
 
     // Get the app to verify ownership using Admin SDK
-    const appRef = adminDb.collection('publicApps').doc(id);
+    const appRef = db.collection('publicApps').doc(id);
     const appSnap = await appRef.get();
 
     if (!appSnap.exists) {

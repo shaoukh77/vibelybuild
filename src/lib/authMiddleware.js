@@ -4,7 +4,7 @@
  * Supports Bearer token and legacy x-uid fallback
  */
 
-import { adminAuth } from './firebaseAdmin';
+import { auth } from './firebaseAdmin';
 
 /**
  * Extract Bearer token from Authorization header
@@ -35,7 +35,7 @@ export async function verifyAuth(request) {
   }
 
   try {
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(token);
     return {
       uid: decodedToken.uid,
       email: decodedToken.email,
@@ -59,7 +59,7 @@ export async function verifyAuthWithFallback(request) {
 
   if (token) {
     try {
-      const decodedToken = await adminAuth.verifyIdToken(token);
+      const decodedToken = await auth.verifyIdToken(token);
       return {
         uid: decodedToken.uid,
         email: decodedToken.email,

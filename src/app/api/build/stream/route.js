@@ -8,7 +8,7 @@
  */
 
 import { verifyAuthWithFallback, verifyOwnership } from '@/lib/authMiddleware';
-import { adminDb } from '@/lib/firebaseAdmin';
+import { db } from '@/lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -46,7 +46,7 @@ export async function GET(request) {
     }
 
     // 3. Verify build exists and user owns it
-    const buildRef = adminDb.collection('builds').doc(buildId);
+    const buildRef = db.collection('builds').doc(buildId);
     const buildSnap = await buildRef.get();
 
     if (!buildSnap.exists) {
@@ -142,7 +142,7 @@ function createBuildLogStream(buildId, userId, buildData) {
         });
 
         // Query existing logs (ordered by timestamp)
-        const logsSnapshot = await adminDb
+        const logsSnapshot = await db
           .collection('buildLogs')
           .where('buildId', '==', buildId)
           .where('userId', '==', userId)
@@ -162,7 +162,7 @@ function createBuildLogStream(buildId, userId, buildData) {
         });
 
         // Subscribe to new logs (real-time)
-        const logsQuery = adminDb
+        const logsQuery = db
           .collection('buildLogs')
           .where('buildId', '==', buildId)
           .where('userId', '==', userId)
@@ -196,7 +196,7 @@ function createBuildLogStream(buildId, userId, buildData) {
         });
 
         // Subscribe to build status changes
-        const buildRef = adminDb.collection('builds').doc(buildId);
+        const buildRef = db.collection('builds').doc(buildId);
 
         unsubscribeBuild = buildRef.onSnapshot(doc => {
           if (!doc.exists) {

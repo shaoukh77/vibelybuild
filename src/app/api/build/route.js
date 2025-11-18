@@ -10,7 +10,7 @@
 import { NextResponse } from 'next/server';
 import { nanoid } from 'nanoid';
 import { verifyAuthWithFallback } from '@/lib/authMiddleware';
-import { adminDb } from '@/lib/firebaseAdmin';
+import { db } from '@/lib/firebaseAdmin';
 import admin from '@/lib/firebaseAdmin';
 import { appendLog, updateBuildStatus, markBuildFailed, markBuildComplete } from '@/lib/logWriter';
 import { generateAppBlueprint } from '@/lib/modelClient';
@@ -77,7 +77,7 @@ export async function POST(request) {
     console.log(`[Build API] Creating build ${finalBuildId} for user ${userId}`);
 
     // 5. Create build document in Firestore
-    const buildRef = adminDb.collection('builds').doc(finalBuildId);
+    const buildRef = db.collection('builds').doc(finalBuildId);
     await buildRef.set({
       userId,
       prompt: prompt.trim(),
@@ -144,7 +144,7 @@ export async function POST(request) {
  * Runs in background, updates Firestore in real-time
  */
 async function executeBuildPipeline({ buildId, userId, prompt, target }) {
-  const buildRef = adminDb.collection('builds').doc(buildId);
+  const buildRef = db.collection('builds').doc(buildId);
 
   try {
     // Step 1: Update status to running

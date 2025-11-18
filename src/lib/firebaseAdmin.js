@@ -1,50 +1,27 @@
 /**
- * Firebase Admin SDK - Production-Ready Singleton
+ * Firebase Admin SDK - Simple Lazy-Load Pattern
  * Server-side only - bypasses Firestore security rules
- * Supports multiple initialization methods for Render.com deployment
+ * Optimized for Render.com deployment
  */
 
 import admin from 'firebase-admin';
 
-let app;
-let db;
-let auth;
-
-/**
- * Initialize Firebase Admin SDK
- * Supports 3 methods:
- * 1. GOOGLE_APPLICATION_CREDENTIALS (file path)
- * 2. FIREBASE_SERVICE_ACCOUNT_KEY (JSON string)
- * 3. Individual env vars (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY)
- */
-function initializeFirebaseAdmin() {
-  if (app) {
-    return { app, db, auth };
-  }
-
+// Lazy initialization - only initialize once when first accessed
+if (!admin.apps.length) {
   try {
     let credential;
 
-    // Check if required Firebase credentials are available
-    const hasIndividualCreds = !!(
+    // Method 1: FIREBASE_ADMIN_CERT (JSON string - single env var)
+    if (process.env.FIREBASE_ADMIN_CERT) {
+      console.log('[Firebase Admin] Using FIREBASE_ADMIN_CERT');
+      credential = admin.credential.cert(JSON.parse(process.env.FIREBASE_ADMIN_CERT));
+    }
+    // Method 2: Individual environment variables
+    else if (
       process.env.FIREBASE_PROJECT_ID &&
       process.env.FIREBASE_CLIENT_EMAIL &&
       process.env.FIREBASE_PRIVATE_KEY
-    );
-
-    // Method 1: GOOGLE_APPLICATION_CREDENTIALS (file path)
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      console.log('[Firebase Admin] Using GOOGLE_APPLICATION_CREDENTIALS');
-      credential = admin.credential.applicationDefault();
-    }
-    // Method 2: FIREBASE_SERVICE_ACCOUNT_KEY (JSON string)
-    else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      console.log('[Firebase Admin] Using FIREBASE_SERVICE_ACCOUNT_KEY');
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-      credential = admin.credential.cert(serviceAccount);
-    }
-    // Method 3: Individual environment variables
-    else if (hasIndividualCreds) {
+    ) {
       console.log('[Firebase Admin] Using individual environment variables');
       credential = admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
@@ -52,78 +29,36 @@ function initializeFirebaseAdmin() {
         privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       });
     }
-    // No credentials available - skip initialization gracefully
+    // Method 3: Application Default Credentials (for local development with gcloud)
+    else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      console.log('[Firebase Admin] Using GOOGLE_APPLICATION_CREDENTIALS');
+      credential = admin.credential.applicationDefault();
+    }
+    // No credentials found - log warning but don't crash (for build time)
     else {
-      console.warn('[Firebase Admin] ⚠️  No credentials found - Firebase Admin will not be initialized');
-      console.warn('[Firebase Admin] This is OK during build time, but will cause runtime errors if Firebase is accessed');
-      return { app: null, db: null, auth: null };
+      console.warn('[Firebase Admin] ⚠️  No credentials found');
+      console.warn('[Firebase Admin] Skipping initialization - will fail at runtime if Firebase is accessed');
     }
 
-    // Initialize app
-    app = admin.initializeApp({
-      credential,
-      projectId: process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    });
+    // Initialize app if credentials were found
+    if (credential) {
+      admin.initializeApp({
+        credential,
+        projectId: process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      });
 
-    // Initialize services
-    db = admin.firestore();
-    auth = admin.auth();
-
-    // Firestore settings for better performance
-    db.settings({
-      ignoreUndefinedProperties: true,
-    });
-
-    console.log('[Firebase Admin] ✅ Initialized successfully');
-    return { app, db, auth };
-
+      console.log('[Firebase Admin] ✅ Initialized successfully');
+    }
   } catch (error) {
     console.error('[Firebase Admin] ❌ Initialization failed:', error.message);
-    console.warn('[Firebase Admin] Continuing without Firebase Admin - runtime errors may occur');
-    // Return null values instead of throwing to prevent build failures
-    return { app: null, db: null, auth: null };
+    console.warn('[Firebase Admin] Continuing without Firebase - runtime errors will occur if Firebase is accessed');
   }
 }
 
-// Lazy initialization state
-let initialized = false;
-let _adminApp, _adminDb, _adminAuth;
-
-// Lazy initialization helper
-function ensureInitialized() {
-  if (!initialized) {
-    const result = initializeFirebaseAdmin();
-    _adminApp = result.app;
-    _adminDb = result.db;
-    _adminAuth = result.auth;
-    initialized = true;
-  }
-}
-
-// Export lazy proxies that initialize on first access
-export const adminApp = new Proxy({}, {
-  get: (target, prop) => {
-    ensureInitialized();
-    return _adminApp[prop];
-  },
-  apply: (target, thisArg, args) => {
-    ensureInitialized();
-    return _adminApp.apply(thisArg, args);
-  }
-});
-
-export const adminDb = new Proxy({}, {
-  get: (target, prop) => {
-    ensureInitialized();
-    return _adminDb[prop];
-  }
-});
-
-export const adminAuth = new Proxy({}, {
-  get: (target, prop) => {
-    ensureInitialized();
-    return _adminAuth[prop];
-  }
-});
-
+// Export the admin instance directly
 export default admin;
+
+// Export common services as shortcuts
+export const db = admin.firestore();
+export const auth = admin.auth();
+export const storage = admin.storage();

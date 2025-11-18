@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { verifyAuthWithFallback } from '@/lib/authMiddleware';
-import { adminDb } from '@/lib/firebaseAdmin';
+import { db } from '@/lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -33,7 +33,7 @@ export async function GET(request) {
     console.log(`[Build List API] Fetching builds for user ${userId}`);
 
     // 2. Query builds from Firestore
-    const buildsSnapshot = await adminDb
+    const buildsSnapshot = await db
       .collection('builds')
       .where('userId', '==', userId)
       .orderBy('createdAt', 'desc')

@@ -4,8 +4,7 @@
  * Used by build pipeline to stream progress to frontend
  */
 
-import { adminDb } from './firebaseAdmin';
-import admin from './firebaseAdmin';
+import admin, { db } from './firebaseAdmin';
 
 /**
  * Append a log message to a build
@@ -19,7 +18,7 @@ import admin from './firebaseAdmin';
  */
 export async function appendLog(buildId, userId, message, level = 'info') {
   try {
-    await adminDb.collection('buildLogs').add({
+    await db.collection('buildLogs').add({
       buildId,
       userId,
       message,
@@ -55,11 +54,11 @@ export async function appendLog(buildId, userId, message, level = 'info') {
 export async function appendLogs(buildId, userId, logs) {
   if (!logs || logs.length === 0) return;
 
-  const batch = adminDb.batch();
+  const batch = db.batch();
   const timestamp = Date.now();
 
   logs.forEach((log, index) => {
-    const docRef = adminDb.collection('buildLogs').doc();
+    const docRef = db.collection('buildLogs').doc();
     batch.set(docRef, {
       buildId,
       userId,
@@ -88,7 +87,7 @@ export async function appendLogs(buildId, userId, logs) {
  */
 export async function updateBuildStatus(buildId, status, additionalData = {}) {
   try {
-    const buildRef = adminDb.collection('builds').doc(buildId);
+    const buildRef = db.collection('builds').doc(buildId);
 
     await buildRef.update({
       status,
