@@ -25,6 +25,13 @@ function initializeFirebaseAdmin() {
   try {
     let credential;
 
+    // Check if required Firebase credentials are available
+    const hasIndividualCreds = !!(
+      process.env.FIREBASE_PROJECT_ID &&
+      process.env.FIREBASE_CLIENT_EMAIL &&
+      process.env.FIREBASE_PRIVATE_KEY
+    );
+
     // Method 1: GOOGLE_APPLICATION_CREDENTIALS (file path)
     if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       console.log('[Firebase Admin] Using GOOGLE_APPLICATION_CREDENTIALS');
@@ -37,11 +44,7 @@ function initializeFirebaseAdmin() {
       credential = admin.credential.cert(serviceAccount);
     }
     // Method 3: Individual environment variables
-    else if (
-      process.env.FIREBASE_PROJECT_ID &&
-      process.env.FIREBASE_CLIENT_EMAIL &&
-      process.env.FIREBASE_PRIVATE_KEY
-    ) {
+    else if (hasIndividualCreds) {
       console.log('[Firebase Admin] Using individual environment variables');
       credential = admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
@@ -49,10 +52,11 @@ function initializeFirebaseAdmin() {
         privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       });
     }
-    // Fallback: Application Default Credentials (Cloud environments)
+    // No credentials available - skip initialization gracefully
     else {
-      console.log('[Firebase Admin] Using application default credentials');
-      credential = admin.credential.applicationDefault();
+      console.warn('[Firebase Admin] ⚠️  No credentials found - Firebase Admin will not be initialized');
+      console.warn('[Firebase Admin] This is OK during build time, but will cause runtime errors if Firebase is accessed');
+      return { app: null, db: null, auth: null };
     }
 
     // Initialize app
@@ -75,7 +79,9 @@ function initializeFirebaseAdmin() {
 
   } catch (error) {
     console.error('[Firebase Admin] ❌ Initialization failed:', error.message);
-    throw new Error(`Firebase Admin initialization failed: ${error.message}`);
+    console.warn('[Firebase Admin] Continuing without Firebase Admin - runtime errors may occur');
+    // Return null values instead of throwing to prevent build failures
+    return { app: null, db: null, auth: null };
   }
 }
 
