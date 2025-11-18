@@ -1,14 +1,16 @@
 /**
  * Download API Endpoint
  * Returns generated code as a ZIP file
+ *
+ * Supports both old buildId (Firestore) and new jobId (filesystem) formats
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyUser } from '@/lib/verifyUser';
 import { db } from '@/lib/firebaseAdmin';
 import { generateProjectFromBlueprint } from '@/lib/codegen';
+import { getJob, getGeneratedFiles, getFileContent } from '@/lib/builder/BuildOrchestrator';
 import archiver from 'archiver';
-import { Readable } from 'stream';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,50 +40,81 @@ export async function GET(
       );
     }
 
-    // Get build from Firestore
-    const buildRef = db.collection('builds').doc(buildId);
-    const buildSnap = await buildRef.get();
+    // Try new job system first
+    const job = getJob(buildId);
 
-    if (!buildSnap.exists) {
-      return NextResponse.json(
-        { error: 'Build not found' },
-        { status: 404 }
+    let files: Record<string, string> = {};
+    let appName = 'generated-app';
+
+    if (job) {
+      // New job system
+      if (job.userId !== authUser.uid) {
+        return NextResponse.json(
+          { error: 'Unauthorized: You do not own this job' },
+          { status: 403 }
+        );
+      }
+
+      if (job.status !== 'complete') {
+        return NextResponse.json(
+          { error: 'Build is not complete yet', status: job.status },
+          { status: 400 }
+        );
+      }
+
+      appName = job.blueprint?.appName || 'generated-app';
+
+      // Get all files from filesystem
+      const fileList = await getGeneratedFiles(buildId);
+      for (const filePath of fileList) {
+        const content = await getFileContent(buildId, filePath);
+        files[filePath] = content;
+      }
+    } else {
+      // Fallback to old Firestore system
+      const buildRef = db.collection('builds').doc(buildId);
+      const buildSnap = await buildRef.get();
+
+      if (!buildSnap.exists) {
+        return NextResponse.json(
+          { error: 'Build not found' },
+          { status: 404 }
+        );
+      }
+
+      const buildData = buildSnap.data();
+
+      if (buildData?.userId !== authUser.uid) {
+        return NextResponse.json(
+          { error: 'Unauthorized: You do not own this build' },
+          { status: 403 }
+        );
+      }
+
+      if (buildData.status !== 'complete') {
+        return NextResponse.json(
+          { error: 'Build is not complete yet', status: buildData.status },
+          { status: 400 }
+        );
+      }
+
+      if (!buildData.blueprint) {
+        return NextResponse.json(
+          { error: 'Blueprint not found for this build' },
+          { status: 404 }
+        );
+      }
+
+      appName = buildData.appName || 'generated-app';
+
+      // Generate project files from blueprint
+      const generatedProject = generateProjectFromBlueprint(
+        buildId,
+        buildData.blueprint
       );
+      files = generatedProject.files;
     }
 
-    const buildData = buildSnap.data();
-
-    // Verify ownership
-    if (buildData?.userId !== authUser.uid) {
-      return NextResponse.json(
-        { error: 'Unauthorized: You do not own this build' },
-        { status: 403 }
-      );
-    }
-
-    // Check if build is complete
-    if (buildData.status !== 'complete') {
-      return NextResponse.json(
-        { error: 'Build is not complete yet', status: buildData.status },
-        { status: 400 }
-      );
-    }
-
-    // Check if blueprint exists
-    if (!buildData.blueprint) {
-      return NextResponse.json(
-        { error: 'Blueprint not found for this build' },
-        { status: 404 }
-      );
-    }
-
-    // Generate project files from blueprint
-    const generatedProject = generateProjectFromBlueprint(
-      buildId,
-      buildData.blueprint
-    );
-
-    const appName = buildData.appName || 'generated-app';
     const folderName = `${appName.toLowerCase().replace(/\s+/g, '-')}-${buildId.substring(0, 8)}`;
 
     // Create ZIP archive
@@ -97,7 +130,7 @@ export async function GET(
     });
 
     // Add files to archive
-    for (const [filePath, content] of Object.entries(generatedProject.files)) {
+    for (const [filePath, content] of Object.entries(files)) {
       archive.append(content, { name: `${folderName}/${filePath}` });
     }
 
