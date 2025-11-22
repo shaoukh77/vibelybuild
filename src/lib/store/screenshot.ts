@@ -1,21 +1,18 @@
 /**
  * Screenshot Generator - Auto-capture preview screenshots
  *
- * Uses Puppeteer Core with Sparticuz Chromium for serverless environments
- * Works on Render, Vercel, and other cloud platforms
+ * Uses Puppeteer Core with Sparticuz Chromium for Render.com deployment
+ * Production-ready serverless screenshot generation
  */
 
-import puppeteer, { Browser, Page } from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
+import puppeteer, { Browser, Page } from 'puppeteer-core';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
 const SCREENSHOT_TIMEOUT = 30000; // 30 seconds
 const SCREENSHOT_SIZE = { width: 1200, height: 630 }; // OG image size
 const PUBLIC_DIR = path.join(process.cwd(), 'public', 'store_screenshots');
-
-// Determine if running in production (serverless)
-const isProduction = process.env.NODE_ENV === 'production';
 
 export interface ScreenshotResult {
   success: boolean;
@@ -44,21 +41,12 @@ export async function capturePreviewScreenshot(
     await fs.mkdir(userDir, { recursive: true });
     console.log(`[Screenshot] ✅ Screenshot directory ready`);
 
-    // Step 2: Launch headless browser with production-ready config
-    console.log(`[Screenshot] 🚀 Launching headless browser (${isProduction ? 'production' : 'development'})...`);
+    // Step 2: Launch headless browser with Render-compatible Chromium
+    console.log(`[Screenshot] 🚀 Launching headless browser...`);
 
     browser = await puppeteer.launch({
-      args: isProduction
-        ? chromium.args
-        : [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-          ],
-      executablePath: isProduction
-        ? await chromium.executablePath()
-        : process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
       headless: true,
     });
 
