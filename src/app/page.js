@@ -34,10 +34,15 @@ export default function Home() {
       <section className="relative z-10 text-center mt-24 px-4 animate-fade-in">
         <div className="max-w-5xl mx-auto">
           {/* Pre-Beta Badge */}
-          <div className="inline-flex items-center gap-2 bg-yellow-500/20 border-2 border-yellow-500/50 rounded-full px-5 py-2.5 mb-6 backdrop-blur-sm">
+          <div className="inline-flex items-center gap-2 bg-yellow-500/20 border-2 border-yellow-500/50 rounded-full px-5 py-2.5 mb-4 backdrop-blur-sm">
             <span className="w-2.5 h-2.5 bg-yellow-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(250,204,21,0.5)]"></span>
-            <span className="text-yellow-200 font-bold text-sm tracking-wide">PRE-BETA VERSION</span>
+            <span className="text-yellow-200 font-bold text-sm tracking-wide">⚡ Pre-Beta Launch – Full Beta Coming Soon</span>
           </div>
+
+          {/* Test Info */}
+          <p className="text-white/70 text-sm mb-6">
+            Users can test the builder for free with limited features.
+          </p>
 
           {/* Main Headline */}
           <h1 className="h1 mb-6">

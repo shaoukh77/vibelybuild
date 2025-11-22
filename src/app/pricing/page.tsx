@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
+import BetaRibbon from '@/components/BetaRibbon';
 
 interface PricingPlan {
   id: string;
@@ -120,6 +121,9 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black text-white">
+      {/* Beta Ribbon */}
+      <BetaRibbon />
+
       {/* Beta Banner */}
       <div className="bg-yellow-500/90 text-black py-3 px-4 text-center font-semibold text-sm">
         ⚠️ This is Pre-Beta — Official Beta coming soon. Builders are limited during this phase.

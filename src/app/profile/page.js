@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import TopNav from "@/components/TopNav";
+import BetaRibbon from "@/components/BetaRibbon";
 import { onAuthChange, signOutUser } from "@/lib/firebase";
 import { getUserBuilds } from "@/lib/firestore";
 
@@ -42,6 +43,7 @@ export default function Profile() {
   if (loading) {
     return (
       <main className="min-h-screen relative overflow-x-hidden">
+        <BetaRibbon />
         {/* Subtle Animated Background Orbs */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="bg-orb bg-orb-purple w-96 h-96 top-1/4 left-1/4 opacity-10"></div>
@@ -62,6 +64,7 @@ export default function Profile() {
   if (!user) {
     return (
       <main className="min-h-screen relative overflow-x-hidden">
+        <BetaRibbon />
         {/* Subtle Animated Background Orbs */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="bg-orb bg-orb-purple w-96 h-96 top-1/4 left-1/4 opacity-10"></div>
@@ -84,6 +87,7 @@ export default function Profile() {
 
   return (
     <main className="min-h-screen relative overflow-x-hidden">
+      <BetaRibbon />
       {/* Subtle Animated Background Orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="bg-orb bg-orb-purple w-96 h-96 top-1/4 left-1/4 opacity-10"></div>
