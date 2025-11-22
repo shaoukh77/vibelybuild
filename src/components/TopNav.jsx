@@ -30,6 +30,16 @@ export default function TopNav() {
   return (
     <nav className="sticky top-6 z-50 mx-auto max-w-7xl px-4">
       <div className="bg-white/5 border border-white/20 backdrop-blur-2xl rounded-full shadow-[0_0_40px_rgba(255,255,255,0.15)] px-4 py-3 flex items-center justify-between gap-4">
+        {/* Logo with BETA Badge */}
+        <Link href="/" className="flex items-center gap-2 mr-2">
+          <span className="text-white font-bold text-lg whitespace-nowrap hidden lg:block">
+            VibeBuild
+          </span>
+          <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-black text-[10px] font-black rounded-full tracking-wider">
+            BETA
+          </span>
+        </Link>
+
         {/* Navigation Links */}
         <div className="flex items-center gap-3">
           {tabs.map((t) => {

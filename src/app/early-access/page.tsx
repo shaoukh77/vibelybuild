@@ -19,6 +19,7 @@ import { BetaBadge } from '@/components/BetaBadge';
 export default function EarlyAccessPage() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [reason, setReason] = useState('');
   const [interests, setInterests] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -53,18 +54,19 @@ export default function EarlyAccessPage() {
       }
 
       // Check if email already exists
-      const waitlistRef = collection(db, 'waitlist');
-      const q = query(waitlistRef, where('email', '==', email.toLowerCase()));
+      const applicationsRef = collection(db, 'early_access_applications');
+      const q = query(applicationsRef, where('email', '==', email.toLowerCase()));
       const existingDocs = await getDocs(q);
 
       if (!existingDocs.empty) {
-        throw new Error('This email is already on the waitlist!');
+        throw new Error('This email has already applied for early access!');
       }
 
-      // Add to waitlist
-      await addDoc(waitlistRef, {
+      // Add to early access applications
+      await addDoc(applicationsRef, {
         email: email.toLowerCase(),
         name: name.trim() || null,
+        reason: reason.trim() || null,
         interests,
         source: 'early-access-page',
         createdAt: serverTimestamp(),
@@ -74,6 +76,7 @@ export default function EarlyAccessPage() {
       setSuccess(true);
       setEmail('');
       setName('');
+      setReason('');
       setInterests([]);
 
     } catch (err: any) {
@@ -176,18 +179,35 @@ export default function EarlyAccessPage() {
               />
             </div>
 
-            {/* Name (optional) */}
+            {/* Name */}
             <div>
               <label htmlFor="name" className="block text-sm font-semibold mb-2">
-                Name (Optional)
+                Name *
               </label>
               <input
                 type="text"
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                required
                 placeholder="Your name"
                 className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-purple-500 transition-colors"
+              />
+            </div>
+
+            {/* Why you want to join */}
+            <div>
+              <label htmlFor="reason" className="block text-sm font-semibold mb-2">
+                Why do you want to join? *
+              </label>
+              <textarea
+                id="reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                required
+                placeholder="Tell us why you're interested in VibeBuild and what you plan to build..."
+                rows={4}
+                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-purple-500 transition-colors resize-none"
               />
             </div>
 

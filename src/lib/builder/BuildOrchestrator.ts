@@ -445,3 +445,18 @@ export function emitUIReadyEvent(jobId: string, previewUrl: string): void {
   // Clear callbacks after emission
   uiReadyCallbacks.delete(jobId);
 }
+
+/**
+ * Delete build cache from disk
+ */
+export async function deleteBuildCache(jobId: string): Promise<void> {
+  const jobDir = path.join(CACHE_DIR, jobId);
+
+  try {
+    await fs.rm(jobDir, { recursive: true, force: true });
+    console.log(`[BuildOrchestrator] 🗑️  Deleted build cache for ${jobId}`);
+  } catch (error) {
+    console.error(`[BuildOrchestrator] ⚠️  Failed to delete build cache for ${jobId}:`, error);
+    throw error;
+  }
+}

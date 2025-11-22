@@ -9,6 +9,14 @@ export default function Home() {
 
   return (
     <main className="min-h-screen relative overflow-x-hidden">
+      {/* PRE-BETA LAUNCH Banner */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 text-white py-3 px-4 text-center font-bold text-sm shadow-lg">
+        <div className="flex items-center justify-center gap-2 animate-pulse">
+          <span className="text-xl">🚀</span>
+          <span>PRE-BETA LAUNCH – Official Beta Coming Soon</span>
+        </div>
+      </div>
+
       {/* Subtle Animated Background Orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="bg-orb bg-orb-purple w-[600px] h-[600px] top-1/4 left-1/4 opacity-12"></div>
@@ -17,7 +25,7 @@ export default function Home() {
       </div>
 
       {/* TopNav */}
-      <div className="relative z-10 py-8">
+      <div className="relative z-10 pt-16 pb-8">
         <TopNav />
       </div>
 
@@ -39,18 +47,77 @@ export default function Home() {
             Transform your app ideas into full-stack applications. Just describe what you want—we handle the code, database, auth, and deployment.
           </p>
 
-          {/* Beta Development Notice */}
-          <div className="max-w-2xl mx-auto mb-12 bg-gradient-to-r from-orange-500/10 to-yellow-500/10 border border-orange-500/30 rounded-2xl p-5 backdrop-blur-sm">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-orange-500/20 rounded-full flex items-center justify-center mt-0.5">
-                <span className="text-orange-400 text-sm">⚠️</span>
+          {/* Pre-Beta Development Status */}
+          <div className="max-w-3xl mx-auto mb-12 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-purple-500/10 border-2 border-purple-500/30 rounded-3xl p-8 backdrop-blur-md shadow-2xl shadow-purple-500/20">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-purple-500/30 to-blue-500/30 rounded-full flex items-center justify-center">
+                <span className="text-3xl">🚧</span>
               </div>
               <div className="text-left flex-1">
-                <h3 className="text-orange-200 font-bold text-sm mb-1.5">Active Development Notice</h3>
-                <p className="text-orange-100/80 text-xs leading-relaxed">
-                  VibeBuild.AI is still under active development. Features may be unstable. Full Beta is launching soon. Currently supporting <strong>Web Apps only</strong>.
+                <h3 className="text-white font-bold text-lg mb-2">Pre-Beta Development Status</h3>
+                <p className="text-white/70 text-sm leading-relaxed mb-4">
+                  VibeBuild.AI is under <strong className="text-purple-300">heavy development</strong>. We're building the future of AI-powered app creation.
                 </p>
               </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">⚡</span>
+                  <h4 className="text-white font-semibold text-sm">Current Features</h4>
+                </div>
+                <ul className="space-y-1.5 text-white/60 text-xs">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 mt-0.5">✓</span>
+                    <span>Limited trial builds (3/day)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 mt-0.5">✓</span>
+                    <span>Web Apps only</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-400 mt-0.5">✓</span>
+                    <span>Basic AI assistance</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">🔮</span>
+                  <h4 className="text-white font-semibold text-sm">Coming in Full Beta</h4>
+                </div>
+                <ul className="space-y-1.5 text-white/60 text-xs">
+                  <li className="flex items-start gap-2">
+                    <span className="text-purple-400 mt-0.5">→</span>
+                    <span>Unlimited builds</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-purple-400 mt-0.5">→</span>
+                    <span>iOS & Android apps</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-purple-400 mt-0.5">→</span>
+                    <span>Store publishing</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={() => router.push('/early-access')}
+                className="px-8 py-3.5 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold rounded-full transition-all duration-300 hover:scale-105 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
+              >
+                Apply for Full Early Access →
+              </button>
+              <button
+                onClick={() => router.push('/pricing')}
+                className="px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full transition-all duration-300 border border-white/20"
+              >
+                View Pricing Plans
+              </button>
             </div>
           </div>
 

@@ -45,8 +45,10 @@ export default function Build() {
   const [dailyBuildsRemaining, setDailyBuildsRemaining] = useState(null);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState('');
+  const [deletingBuildId, setDeletingBuildId] = useState(null);
   const logsEndRef = useRef(null);
   const promptRef = useRef(null);
+  const buildDebounceRef = useRef(null);
 
   // Zustand state
   const {
@@ -110,6 +112,55 @@ export default function Build() {
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  // Debounced build function (800ms debounce)
+  const debouncedStartBuild = () => {
+    if (buildDebounceRef.current) {
+      clearTimeout(buildDebounceRef.current);
+    }
+
+    buildDebounceRef.current = setTimeout(() => {
+      startBuild();
+    }, 800);
+
+    showToast("Build scheduled... (800ms debounce)", "info");
+  };
+
+  // Delete build handler
+  const handleDeleteBuild = async (buildId) => {
+    if (!confirm('Are you sure you want to delete this build? This cannot be undone.')) {
+      return;
+    }
+
+    setDeletingBuildId(buildId);
+
+    try {
+      const response = await authFetch(`/api/build/delete?projectId=${buildId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete build');
+      }
+
+      // Remove from UI
+      setBuilds(prev => prev.filter(b => b.id !== buildId));
+
+      // Clear selection if deleted build was selected
+      if (selectedBuildId === buildId) {
+        setSelectedBuildId(null);
+      }
+
+      showToast('Build deleted successfully');
+    } catch (error) {
+      console.error('Delete error:', error);
+      showToast(error.message || 'Failed to delete build', 'error');
+    } finally {
+      setDeletingBuildId(null);
+    }
   };
 
   const startBuild = async () => {
@@ -646,18 +697,18 @@ export default function Build() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemixBuild(build);
-                          }}
-                          className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-all"
-                        >
-                          🔄 Remix
-                        </button>
-                        {build.status === "complete" && (
-                          <>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemixBuild(build);
+                            }}
+                            className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-all"
+                          >
+                            🔄 Remix
+                          </button>
+                          {build.status === "complete" && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -667,8 +718,18 @@ export default function Build() {
                             >
                               ⬇️ Download
                             </button>
-                          </>
-                        )}
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteBuild(build.id);
+                          }}
+                          disabled={deletingBuildId === build.id}
+                          className="w-full px-3 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-200 rounded-lg text-xs font-medium transition-all border border-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {deletingBuildId === build.id ? '⏳ Deleting...' : '🗑️ Delete'}
+                        </button>
                       </div>
                     </div>
                   ))
