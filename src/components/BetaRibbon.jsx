@@ -8,8 +8,8 @@ export default function BetaRibbon() {
         <div className="absolute inset-0 bg-purple-500 rounded-full blur-lg opacity-60 group-hover:opacity-80 transition-opacity"></div>
 
         {/* Badge */}
-        <div className="relative px-4 py-1.5 bg-purple-600/90 backdrop-blur-md rounded-full border border-white/20 shadow-lg">
-          <span className="text-white font-bold text-xs tracking-wider">PRE-BETA ACCESS</span>
+        <div className="relative px-5 py-2 bg-purple-600/90 backdrop-blur-md rounded-full border border-white/20 shadow-lg">
+          <span className="text-white font-bold text-xs tracking-wide">🔥 Pre-Beta Launch — Full Beta Coming Soon</span>
         </div>
       </div>
     </div>

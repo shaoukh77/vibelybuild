@@ -20,6 +20,7 @@
     "@octokit/rest": "^22.0.1",
     "@opentelemetry/api": "^1.9.0",
     "@radix-ui/react-slot": "^1.2.4",
+    "@sparticuz/chromium": "^141.0.0",
     "@types/archiver": "^7.0.0",
     "archiver": "^7.0.1",
     "cors": "^2.8.5",
@@ -33,7 +34,7 @@
     "nanoid": "^5.1.6",
     "next": "16.0.1",
     "openai": "^6.9.0",
-    "puppeteer": "^24.31.0",
+    "puppeteer-core": "^23.11.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "zustand": "^5.0.8"

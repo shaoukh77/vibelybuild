@@ -1,17 +1,21 @@
 /**
  * Screenshot Generator - Auto-capture preview screenshots
  *
- * Uses Puppeteer to automatically capture screenshots of live preview apps
- * for the VibelyBuild Store
+ * Uses Puppeteer Core with Sparticuz Chromium for serverless environments
+ * Works on Render, Vercel, and other cloud platforms
  */
 
-import puppeteer, { Browser, Page } from 'puppeteer';
+import puppeteer, { Browser, Page } from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
 const SCREENSHOT_TIMEOUT = 30000; // 30 seconds
 const SCREENSHOT_SIZE = { width: 1200, height: 630 }; // OG image size
 const PUBLIC_DIR = path.join(process.cwd(), 'public', 'store_screenshots');
+
+// Determine if running in production (serverless)
+const isProduction = process.env.NODE_ENV === 'production';
 
 export interface ScreenshotResult {
   success: boolean;
@@ -40,19 +44,22 @@ export async function capturePreviewScreenshot(
     await fs.mkdir(userDir, { recursive: true });
     console.log(`[Screenshot] ✅ Screenshot directory ready`);
 
-    // Step 2: Launch headless browser
-    console.log(`[Screenshot] 🚀 Launching headless browser...`);
+    // Step 2: Launch headless browser with production-ready config
+    console.log(`[Screenshot] 🚀 Launching headless browser (${isProduction ? 'production' : 'development'})...`);
+
     browser = await puppeteer.launch({
+      args: isProduction
+        ? chromium.args
+        : [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+          ],
+      executablePath: isProduction
+        ? await chromium.executablePath()
+        : process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-software-rasterizer',
-        '--disable-extensions',
-      ],
-      timeout: SCREENSHOT_TIMEOUT,
     });
 
     page = await browser.newPage();

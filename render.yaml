@@ -4,7 +4,7 @@ services:
     env: node
     region: oregon
     plan: starter
-    buildCommand: ./render-build.sh
+    buildCommand: sh render-build.sh
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -44,6 +44,9 @@ services:
       - key: GITHUB_TOKEN
         sync: false
       - key: GITHUB_OWNER
+        sync: false
+      # Site URL
+      - key: NEXT_PUBLIC_SITE_URL
         sync: false
     healthCheckPath: /api/health
     autoDeploy: true
