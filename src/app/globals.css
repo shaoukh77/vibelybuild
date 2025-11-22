@@ -6,15 +6,16 @@
    BETA WALLPAPER + GLASSMORPHISM THEME
    ======================================== */
 
-/* Global Background - Beta Background with dark overlay */
+/* Global Background - Beta Background with optimized dark overlay */
 body {
   min-height: 100vh;
   background:
-    linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)),
+    linear-gradient(rgba(0, 0, 0, 0.30), rgba(0, 0, 0, 0.30)),
     url('/bg-beta.jpg') center center / cover no-repeat;
   background-attachment: fixed;
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
 }
 
 /* Mobile: Scrollable background for better performance */
