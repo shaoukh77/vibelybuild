@@ -1,3 +1,10 @@
 #!/usr/bin/env bash
-yarn install
-yarn build
+set -e
+
+echo "🔧 Installing dependencies..."
+npm ci --legacy-peer-deps
+
+echo "🏗️ Building application..."
+npm run build
+
+echo "✅ Build complete!"
