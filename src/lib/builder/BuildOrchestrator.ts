@@ -17,6 +17,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { generateProjectFromBlueprint } from '../codegen';
 import { generateAppBlueprint, AppBlueprint } from '../llmProvider';
+import { attachPreviewToBuild } from '../livepreview/attachPreview';
 
 const CACHE_DIR = path.join(process.cwd(), '.cache', 'vibecode');
 const BUILD_TIMEOUT = 300000; // 5 minutes
@@ -32,6 +33,7 @@ export interface BuildJob {
   error?: string;
   blueprint?: AppBlueprint;
   outputPath?: string;
+  previewUrl?: string;
 }
 
 export interface BuildLog {
@@ -47,6 +49,9 @@ export interface BuildLog {
 const activeJobs = new Map<string, BuildJob>();
 const jobLogs = new Map<string, BuildLog[]>();
 const jobTimeouts = new Map<string, NodeJS.Timeout>();
+
+// UI Ready event tracking (for SSE emission)
+const uiReadyCallbacks = new Map<string, ((url: string) => void)[]>();
 
 /**
  * Create a new build job
@@ -272,7 +277,21 @@ export async function executeBuild(jobId: string): Promise<void> {
       progress: 90,
     });
 
-    // Step 5: Complete
+    // Step 5: Start live preview server
+    let previewUrl: string | null = null;
+    try {
+      previewUrl = await attachPreviewToBuild(jobId, jobDir, job.userId);
+
+      if (previewUrl) {
+        job.previewUrl = previewUrl;
+        activeJobs.set(jobId, job);
+        console.log(`[BuildOrchestrator] ✅ Preview URL: ${previewUrl}`);
+      }
+    } catch (error: any) {
+      console.error(`[BuildOrchestrator] Preview failed for ${jobId}:`, error);
+    }
+
+    // Step 6: Complete
     addJobLog(jobId, {
       step: 'complete',
       status: 'success',
@@ -384,6 +403,7 @@ export async function cleanupOldJobs(maxAgeMs: number = 24 * 60 * 60 * 1000): Pr
       // Remove from memory
       activeJobs.delete(jobId);
       jobLogs.delete(jobId);
+      uiReadyCallbacks.delete(jobId);
 
       // Remove from disk
       const jobDir = path.join(CACHE_DIR, jobId);
@@ -394,4 +414,34 @@ export async function cleanupOldJobs(maxAgeMs: number = 24 * 60 * 60 * 1000): Pr
       }
     }
   }
+}
+
+/**
+ * Register a callback for when UI is ready
+ * Used by SSE stream to emit "ui_ready" event
+ */
+export function onUIReady(jobId: string, callback: (url: string) => void): void {
+  const callbacks = uiReadyCallbacks.get(jobId) || [];
+  callbacks.push(callback);
+  uiReadyCallbacks.set(jobId, callbacks);
+}
+
+/**
+ * Emit UI Ready event (called when Next.js says "Ready in X.Xs")
+ */
+export function emitUIReadyEvent(jobId: string, previewUrl: string): void {
+  console.log(`[BuildOrchestrator] 🎨 Emitting UI Ready event for ${jobId}: ${previewUrl}`);
+
+  const callbacks = uiReadyCallbacks.get(jobId) || [];
+
+  for (const callback of callbacks) {
+    try {
+      callback(previewUrl);
+    } catch (error) {
+      console.error(`[BuildOrchestrator] Error in UI Ready callback:`, error);
+    }
+  }
+
+  // Clear callbacks after emission
+  uiReadyCallbacks.delete(jobId);
 }

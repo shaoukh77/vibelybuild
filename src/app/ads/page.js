@@ -15,55 +15,7 @@ import {
   doc,
   serverTimestamp,
 } from "firebase/firestore";
-
-// Placeholder function for Claude API call
-function generateAd(prompt) {
-  // This is a placeholder - will be replaced with actual Claude API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        script: `Scene 1: Opening Hook (0-3s)
-[Camera on user, energetic music]
-"Hey! Are you tired of [problem]? Let me show you something amazing!"
-
-Scene 2: Problem Identification (3-8s)
-[B-roll of common pain points]
-"We all know how frustrating it is when ${prompt.description}..."
-
-Scene 3: Solution Introduction (8-15s)
-[Show product/app in action]
-"That's why I started using ${prompt.title}. It's a game-changer for ${prompt.targetAudience}."
-
-Scene 4: Benefits & Features (15-25s)
-[Quick feature demos with text overlays]
-✓ Easy to use
-✓ Saves time
-✓ Gets results fast
-
-Scene 5: Call to Action (25-30s)
-[User excited, showing results]
-"Try it yourself - link in bio! You won't regret it!"`,
-        caption: `🚀 Game-changer alert! ${prompt.title} is transforming how ${prompt.targetAudience} handle their daily tasks.
-
-${prompt.description}
-
-I've been using it for weeks and the results are incredible! 💯
-
-Perfect for: ${prompt.targetAudience}
-Platform: ${prompt.platform}
-
-Ready to level up? Click the link in bio! 👆
-
-#innovation #productivity #${prompt.platform.toLowerCase()} #tech #gamechange`,
-        hooks: [
-          `🔥 ${prompt.targetAudience} - this changes everything`,
-          `💡 The secret that top ${prompt.targetAudience} don't want you to know`,
-          `⚡ How I 10x my results with ${prompt.title}`,
-        ],
-      });
-    }, 2000);
-  });
-}
+import { authFetch } from "@/lib/authFetch";
 
 export default function AIAdsPage() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -80,7 +32,7 @@ export default function AIAdsPage() {
     platform: "Facebook",
   });
 
-  // Output state
+  // Output state - now includes AI generated images
   const [output, setOutput] = useState(null);
 
   // Listen to auth state
@@ -99,7 +51,6 @@ export default function AIAdsPage() {
     }
 
     const adsRef = collection(db, "users", currentUser.uid, "ads");
-    // Simplified query: no orderBy to avoid composite index - will sort client-side
     const q = query(adsRef, limit(20));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -146,10 +97,39 @@ export default function AIAdsPage() {
     }
 
     setLoading(true);
+    setOutput(null); // Clear previous output
+
     try {
-      // Call placeholder generateAd function
-      const result = await generateAd(formData);
-      setOutput(result);
+      console.log('[Ads Page] Calling AI image generation API...');
+
+      // Call the real AI Ads Generator API
+      const response = await authFetch('/api/ads/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          audience: formData.targetAudience,
+          platform: formData.platform,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to generate ads');
+      }
+
+      console.log('[Ads Page] AI images generated successfully:', result);
+
+      // Set output with generated images
+      setOutput({
+        images: result.images || [],
+        sessionId: result.sessionId,
+        generatedAt: result.generatedAt,
+      });
 
       // Save to Firestore
       const adsRef = collection(db, "users", currentUser.uid, "ads");
@@ -158,16 +138,16 @@ export default function AIAdsPage() {
         description: formData.description,
         targetAudience: formData.targetAudience,
         platform: formData.platform,
-        script: result.script,
-        caption: result.caption,
-        hooks: result.hooks,
+        images: result.images || [],
+        sessionId: result.sessionId,
         createdAt: serverTimestamp(),
       });
 
-      showToast("AI ad generated successfully!");
+      showToast("AI ad images generated successfully!");
+
     } catch (error) {
-      console.error("Generation error:", error);
-      showToast("Failed to generate ad. Please try again.", "error");
+      console.error("[Ads Page] Generation error:", error);
+      showToast(`Ad generation failed: ${error.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -187,9 +167,8 @@ export default function AIAdsPage() {
       platform: ad.platform,
     });
     setOutput({
-      script: ad.script,
-      caption: ad.caption,
-      hooks: ad.hooks,
+      images: ad.images || [],
+      sessionId: ad.sessionId,
     });
   };
 
@@ -214,6 +193,16 @@ export default function AIAdsPage() {
       console.error("Delete error:", error);
       showToast("Failed to delete ad", "error");
     }
+  };
+
+  const handleDownloadImage = (imageUrl, filename) => {
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = filename || 'ad-image.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Image download started!");
   };
 
   const platformOptions = [
@@ -244,7 +233,7 @@ export default function AIAdsPage() {
             AI Ads Generator
           </h1>
           <p className="text-white/80 text-lg">
-            Create high-converting ad campaigns with AI
+            Create high-converting ad graphics with AI
           </p>
         </div>
 
@@ -381,18 +370,6 @@ export default function AIAdsPage() {
                           👁️ View
                         </button>
                         <button
-                          onClick={() =>
-                            handleCopy(
-                              `${ad.script}\n\n${ad.caption}\n\n${ad.hooks.join(
-                                "\n"
-                              )}`
-                            )
-                          }
-                          className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-all"
-                        >
-                          📋 Copy
-                        </button>
-                        <button
                           onClick={() => handleDelete(ad.id)}
                           className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-white rounded-lg text-xs font-medium transition-all"
                         >
@@ -423,78 +400,83 @@ export default function AIAdsPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {/* Generated Script */}
-                  <div className="animate-fade-in">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xl font-bold text-white">
-                        🎬 Generated Script
-                      </h3>
-                      <button
-                        onClick={() => handleCopy(output.script)}
-                        className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-medium transition-all"
-                      >
-                        📋 Copy
-                      </button>
-                    </div>
-                    <div className="bg-black/20 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                      <pre className="text-white/90 whitespace-pre-wrap leading-relaxed font-sans text-sm">
-                        {output.script}
-                      </pre>
-                    </div>
-                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-6">
+                    🎨 Generated Ad Graphics
+                  </h3>
 
-                  {/* Generated Caption */}
-                  <div className="animate-fade-in delay-100">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xl font-bold text-white">
-                        📝 Generated Caption
-                      </h3>
-                      <button
-                        onClick={() => handleCopy(output.caption)}
-                        className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-medium transition-all"
-                      >
-                        📋 Copy
-                      </button>
-                    </div>
-                    <div className="bg-black/20 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                      <p className="text-white/90 whitespace-pre-wrap leading-relaxed">
-                        {output.caption}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Generated Hooks */}
-                  <div className="animate-fade-in delay-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xl font-bold text-white">
-                        🎯 Generated Hooks
-                      </h3>
-                      <button
-                        onClick={() => handleCopy(output.hooks.join("\n"))}
-                        className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-medium transition-all"
-                      >
-                        📋 Copy All
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {output.hooks.map((hook, index) => (
+                  {/* Display Generated Images */}
+                  {output.images && output.images.length > 0 ? (
+                    <div className="grid md:grid-cols-2 gap-6">
+                      {output.images.map((image, index) => (
                         <div
                           key={index}
-                          className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10 group hover:bg-black/30 transition-all"
+                          className="animate-fade-in bg-black/20 backdrop-blur-sm rounded-2xl p-4 border border-white/10 hover:border-white/20 transition-all group"
+                          style={{ animationDelay: `${index * 100}ms` }}
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <p className="text-white/90 flex-1">{hook}</p>
+                          <div className="mb-3 flex items-center justify-between">
+                            <p className="text-white font-semibold text-sm">
+                              Ad Variation {index + 1}
+                            </p>
                             <button
-                              onClick={() => handleCopy(hook)}
-                              className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-all"
+                              onClick={() => handleDownloadImage(image.url, image.filename)}
+                              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs font-medium transition-all opacity-0 group-hover:opacity-100"
                             >
-                              Copy
+                              ⬇️ Download
                             </button>
+                          </div>
+
+                          {/* Image Display */}
+                          <div className="relative aspect-square overflow-hidden rounded-xl bg-black/30">
+                            <img
+                              src={image.url}
+                              alt={`Generated ad ${index + 1}`}
+                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                              onError={(e) => {
+                                e.target.src = '/placeholder-ad.png';
+                                console.error('Failed to load image:', image.url);
+                              }}
+                            />
+                          </div>
+
+                          {/* Image Actions */}
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              onClick={() => handleCopy(window.location.origin + image.url)}
+                              className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-all"
+                            >
+                              🔗 Copy Link
+                            </button>
+                            <a
+                              href={image.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-all text-center"
+                            >
+                              👁️ Open
+                            </a>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-white/60">No images generated</p>
+                    </div>
+                  )}
+
+                  {/* Session Info */}
+                  {output.sessionId && (
+                    <div className="mt-6 p-4 bg-black/20 backdrop-blur-sm rounded-xl border border-white/10">
+                      <p className="text-white/60 text-xs">
+                        Session ID: <span className="text-white/80 font-mono">{output.sessionId}</span>
+                      </p>
+                      {output.generatedAt && (
+                        <p className="text-white/60 text-xs mt-1">
+                          Generated: <span className="text-white/80">{new Date(output.generatedAt).toLocaleString()}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -569,14 +551,6 @@ export default function AIAdsPage() {
 
         .delay-200 {
           animation-delay: 200ms;
-        }
-
-        .delay-1000 {
-          animation-delay: 1000ms;
-        }
-
-        .delay-2000 {
-          animation-delay: 2000ms;
         }
 
         .custom-scrollbar::-webkit-scrollbar {

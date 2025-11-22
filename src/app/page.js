@@ -24,14 +24,35 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative z-10 text-center mt-24 px-4 animate-fade-in">
         <div className="max-w-5xl mx-auto">
+          {/* Pre-Beta Badge */}
+          <div className="inline-flex items-center gap-2 bg-yellow-500/20 border-2 border-yellow-500/50 rounded-full px-5 py-2.5 mb-6 backdrop-blur-sm">
+            <span className="w-2.5 h-2.5 bg-yellow-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(250,204,21,0.5)]"></span>
+            <span className="text-yellow-200 font-bold text-sm tracking-wide">PRE-BETA VERSION</span>
+          </div>
+
           {/* Main Headline */}
           <h1 className="h1 mb-6">
             Build Real Apps with <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-blue-400 to-purple-400">AI</span>
           </h1>
 
-          <p className="sub max-w-3xl mx-auto mb-12">
+          <p className="sub max-w-3xl mx-auto mb-8">
             Transform your app ideas into full-stack applications. Just describe what you want—we handle the code, database, auth, and deployment.
           </p>
+
+          {/* Beta Development Notice */}
+          <div className="max-w-2xl mx-auto mb-12 bg-gradient-to-r from-orange-500/10 to-yellow-500/10 border border-orange-500/30 rounded-2xl p-5 backdrop-blur-sm">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-orange-500/20 rounded-full flex items-center justify-center mt-0.5">
+                <span className="text-orange-400 text-sm">⚠️</span>
+              </div>
+              <div className="text-left flex-1">
+                <h3 className="text-orange-200 font-bold text-sm mb-1.5">Active Development Notice</h3>
+                <p className="text-orange-100/80 text-xs leading-relaxed">
+                  VibeBuild.AI is still under active development. Features may be unstable. Full Beta is launching soon. Currently supporting <strong>Web Apps only</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Prompt Box */}
           <div className="glass-section max-w-3xl mx-auto mb-20">
@@ -69,8 +90,8 @@ export default function Home() {
           {/* Feature Pills */}
           <div className="flex flex-wrap items-center justify-center gap-3 mb-16">
             {[
+              "🌐 Web Apps Only (Beta)",
               "🔐 Built-in Auth",
-              "💳 Payment Ready",
               "📊 Real-time Database",
               "📱 Mobile Responsive",
               "⚡ Deploy-Ready"
@@ -184,7 +205,7 @@ export default function Home() {
             Start Building Free →
           </button>
           <p className="text-white/40 text-sm mt-6">
-            No credit card required • Build unlimited apps
+            No credit card required • Pre-Beta Access • Web Apps Only
           </p>
         </div>
       </section>

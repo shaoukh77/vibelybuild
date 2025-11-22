@@ -16,12 +16,16 @@ import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import TopNav from "@/components/TopNav";
 import PublishDialog from "@/components/PublishDialog";
+import PaywallPopup from "@/components/PaywallPopup";
 import TimeAgo from "@/components/TimeAgo";
 import { onAuthChange } from "@/lib/firebase";
-import { subscribeToUserBuilds, subscribeToBuildLogs, publishApp, createBuild } from "@/lib/firestore";
+import { publishApp } from "@/lib/firestore";
 import { useUI } from "@/store/useUI";
 import { authFetch } from "@/lib/authFetch";
 import { triggerDownload } from "@/lib/builderClient";
+import { LivePreviewPanel } from "@/app/build/livePreviewPanel";
+import { fetchPreviewUrl } from "@/lib/api/fetchPreview";
+import { canCreateBuild } from "@/lib/user/userPlan";
 
 export default function Build() {
   const router = useRouter();
@@ -32,6 +36,15 @@ export default function Build() {
   const [buildLogs, setBuildLogs] = useState([]);
   const [isBuilding, setIsBuilding] = useState(false);
   const [toast, setToast] = useState(null);
+  const [buildComplete, setBuildComplete] = useState(false);
+  const [fileTree, setFileTree] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [uiReadyUrl, setUiReadyUrl] = useState(null); // PHASE 3: Listen for ui_ready event
+  const [previewStatus, setPreviewStatus] = useState('waiting'); // waiting, preparing, ready
+  const [isTrial, setIsTrial] = useState(false);
+  const [dailyBuildsRemaining, setDailyBuildsRemaining] = useState(null);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  const [paywallFeature, setPaywallFeature] = useState('');
   const logsEndRef = useRef(null);
   const promptRef = useRef(null);
 
@@ -62,35 +75,29 @@ export default function Build() {
     return () => unsubscribe();
   }, []);
 
-  // Subscribe to user's builds (Firestore real-time)
+  // Check trial status when user changes
   useEffect(() => {
-    if (!userId) {
-      setBuilds([]);
-      return;
+    if (user?.uid) {
+      checkTrialStatus();
     }
+  }, [user]);
 
-    const unsubscribe = subscribeToUserBuilds(userId, (userBuilds) => {
-      console.log('Builds received:', userBuilds.map(b => ({ id: b.id, status: b.status, prompt: b.prompt })));
-      setBuilds(userBuilds);
-    });
+  const checkTrialStatus = async () => {
+    if (!user?.uid) return;
 
-    return () => unsubscribe();
-  }, [userId]);
-
-  // Subscribe to build logs for selected build (Firestore real-time)
-  useEffect(() => {
-    if (!selectedBuildId || !userId) {
-      setBuildLogs([]);
-      return;
+    try {
+      const status = await canCreateBuild(user.uid);
+      setIsTrial(status.isTrial || false);
+      setDailyBuildsRemaining(status.dailyBuildsRemaining ?? null);
+    } catch (error) {
+      console.error('Error checking trial status:', error);
     }
+  };
 
-    const unsubscribe = subscribeToBuildLogs(selectedBuildId, userId, (logs) => {
-      console.log(`Logs received for build ${selectedBuildId}:`, logs.length);
-      setBuildLogs(logs);
-    });
-
-    return () => unsubscribe();
-  }, [selectedBuildId, userId]);
+  // Note: We're now using the BuildOrchestrator system
+  // Builds are stored in-memory on the backend and in .cache/
+  // For now, we'll just track the current build in state
+  // TODO: Add a /api/build/list endpoint if we need to persist builds
 
   // Auto-scroll logs to bottom
   useEffect(() => {
@@ -116,46 +123,211 @@ export default function Build() {
       return;
     }
 
+    // Check build limits
+    try {
+      const buildCheck = await canCreateBuild(user.uid);
+
+      if (!buildCheck.allowed) {
+        showToast(buildCheck.reason || "Build limit reached", "error");
+        return;
+      }
+
+      // Update remaining builds display
+      setDailyBuildsRemaining(buildCheck.dailyBuildsRemaining ?? null);
+    } catch (error) {
+      console.error('Error checking build limits:', error);
+      showToast("Error checking build limits. Please try again.", "error");
+      return;
+    }
+
     setIsBuilding(true);
+    setBuildLogs([]); // Clear previous logs
+    setBuildComplete(false);
+    setFileTree(null);
+    setPreviewUrl(null); // Clear previous preview URL
+    setUiReadyUrl(null); // Clear previous UI ready URL
+    setPreviewStatus('waiting');
 
     try {
-      const buildId = nanoid();
+      console.log('Starting VibeCode build:', { target, prompt: prompt.substring(0, 50) });
 
-      console.log('Starting VibeCode build:', { buildId, userId, target, prompt: prompt.substring(0, 50) });
-
-      // Create build document in Firestore
-      await createBuild({
-        buildId,
-        userId,
-        prompt: prompt.trim()
-      });
-
-      console.log('Build document created in Firestore');
-
-      // Call new VibeCode build API with auth token
-      const r = await authFetch("/api/build-app", {
+      // Call new BuildOrchestrator API
+      const r = await authFetch("/api/build/start", {
         method: "POST",
         body: JSON.stringify({
-          buildId,
-          userId,
           prompt: prompt.trim(),
           target
         })
       });
 
-      const { success, buildId: returnedBuildId } = await r.json();
-      console.log('VibeCode build started:', { success, buildId: returnedBuildId });
+      const data = await r.json();
 
-      setSelectedBuildId(buildId);
+      if (!data.success) {
+        throw new Error(data.error || 'Build failed to start');
+      }
+
+      const { jobId } = data;
+      console.log('VibeCode build started:', { jobId, status: data.status });
+
+      setSelectedBuildId(jobId);
+
+      // Add to builds list for UI
+      setBuilds(prev => [{
+        id: jobId,
+        prompt: prompt.trim(),
+        target,
+        status: 'running',
+        createdAt: new Date(),
+      }, ...prev]);
+
       setPrompt("");
       showToast("VibeCode build started! Watch the logs below.");
 
-      // Firestore will update in real-time via subscription
+      // Start SSE log streaming
+      startLogStream(jobId);
+
       setIsBuilding(false);
     } catch (error) {
       console.error("Build error:", error);
       showToast(error.message || "Build failed", "error");
       setIsBuilding(false);
+    }
+  };
+
+  // SSE Log Streaming
+  const startLogStream = async (jobId) => {
+    try {
+      const token = await user.getIdToken();
+      const url = `/api/build/logs?jobId=${jobId}&token=${encodeURIComponent(token)}`;
+
+      const eventSource = new EventSource(url);
+
+      // Listen to "message" events for live logs
+      eventSource.addEventListener('message', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.log) {
+            // Add log to state
+            setBuildLogs(prev => [...prev, {
+              id: nanoid(),
+              message: data.log,
+              level: data.status || 'info',
+              timestamp: data.timestamp || Date.now(),
+            }]);
+          }
+        } catch (err) {
+          console.error('Failed to parse log message:', err);
+        }
+      });
+
+      // Listen to "fileTree" event for real-time file tree updates
+      eventSource.addEventListener('fileTree', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('[SSE] Received fileTree event:', data);
+
+          if (data.files) {
+            setFileTree(data.files);
+          }
+        } catch (err) {
+          console.error('Failed to parse fileTree event:', err);
+        }
+      });
+
+      // Listen to "generatedFiles" event for file generation updates
+      eventSource.addEventListener('generatedFiles', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('[SSE] Received generatedFiles event:', data);
+
+          if (data.files) {
+            setFileTree(data.files);
+          }
+        } catch (err) {
+          console.error('Failed to parse generatedFiles event:', err);
+        }
+      });
+
+      // Listen to "preview_ready" event for preview URL
+      eventSource.addEventListener('preview_ready', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('[SSE] Received preview_ready event:', data);
+
+          if (data.url) {
+            setPreviewUrl(data.url);
+            setPreviewStatus('preparing'); // Server started, waiting for compilation
+          }
+        } catch (err) {
+          console.error('Failed to parse preview_ready event:', err);
+        }
+      });
+
+      // PHASE 3: Listen to "ui_ready" event for when Next.js is fully compiled
+      eventSource.addEventListener('ui_ready', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('[SSE] Received ui_ready event:', data);
+
+          if (data.url) {
+            setUiReadyUrl(data.url);
+            setPreviewStatus('ready'); // UI is fully compiled and interactive
+            showToast("✅ Preview UI is fully ready and interactive!");
+          }
+        } catch (err) {
+          console.error('Failed to parse ui_ready event:', err);
+        }
+      });
+
+      // Listen to "done" event for completion
+      eventSource.addEventListener('done', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Build complete:', data);
+          eventSource.close();
+
+          // Update build status in list
+          setBuilds(prev => prev.map(b =>
+            b.id === jobId
+              ? { ...b, status: data.success ? 'complete' : 'failed' }
+              : b
+          ));
+
+          if (data.success) {
+            setBuildComplete(true);
+            showToast("Build complete! Preview and download ready.");
+          } else {
+            showToast(data.error || "Build failed. Check logs for details.", "error");
+          }
+        } catch (err) {
+          console.error('Failed to parse done message:', err);
+        }
+      });
+
+      // Listen to "error" events
+      eventSource.addEventListener('error', (event) => {
+        try {
+          if (event.data) {
+            const data = JSON.parse(event.data);
+            console.error('Build error:', data.error);
+            showToast(data.error || "Build error occurred", "error");
+          }
+        } catch (err) {
+          // Generic error without data
+          console.error('SSE connection error');
+        }
+      });
+
+      eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error);
+        eventSource.close();
+        showToast("Connection lost. Please refresh.", "error");
+      };
+
+    } catch (error) {
+      console.error('Failed to start log stream:', error);
+      showToast("Failed to start log stream", "error");
     }
   };
 
@@ -170,6 +342,13 @@ export default function Build() {
   };
 
   const handleOpenPublishModal = (build) => {
+    // Check if user is on trial - block publishing
+    if (isTrial) {
+      setPaywallFeature('Publishing to Vibe Store');
+      setIsPaywallOpen(true);
+      return;
+    }
+
     setPublishTitle(build.prompt.substring(0, 50));
     setPublishDescription("");
     setPublishCoverUrl("");
@@ -206,10 +385,31 @@ export default function Build() {
     }
   };
 
-  const handleDownload = async (build) => {
+  const handleDownload = async (jobId) => {
     try {
       showToast("Preparing download...");
-      await triggerDownload(build.id, build.appName || 'app');
+      const token = await user.getIdToken();
+
+      const response = await fetch(`/api/download/${jobId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `app-${jobId}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
       showToast("Downloaded successfully!");
     } catch (error) {
       console.error("Download error:", error);
@@ -254,7 +454,7 @@ export default function Build() {
       {/* ========== HERO SECTION ========== */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 pb-12">
         {/* Page Header */}
-        <div className="mb-12 text-center animate-fade-in">
+        <div className="mb-8 text-center animate-fade-in">
           <h1 className="h1 mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-blue-200">
             Build Real Apps with AI
           </h1>
@@ -263,10 +463,55 @@ export default function Build() {
           </p>
         </div>
 
+        {/* Beta Development Notice */}
+        <div className="max-w-3xl mx-auto mb-8 bg-gradient-to-r from-orange-500/10 to-yellow-500/10 border border-orange-500/30 rounded-2xl p-5 backdrop-blur-sm animate-fade-in">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-6 h-6 bg-orange-500/20 rounded-full flex items-center justify-center mt-0.5">
+              <span className="text-orange-400 text-sm">⚠️</span>
+            </div>
+            <div className="text-left flex-1">
+              <h3 className="text-orange-200 font-bold text-sm mb-1.5">Pre-Beta Testing Mode</h3>
+              <p className="text-orange-100/80 text-xs leading-relaxed">
+                Generated apps may not be fully functional yet — this builder is in early testing mode. Currently supporting <strong>Web Apps only</strong>. iOS and Android support coming soon.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Main 3-Column Layout */}
         <div className="grid lg:grid-cols-3 gap-6 mb-16">
           {/* LEFT - Prompt + My Builds */}
           <div className="lg:col-span-1 space-y-6">
+            {/* Trial Mode Indicator */}
+            {isTrial && dailyBuildsRemaining !== null && (
+              <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/40 rounded-xl p-4 backdrop-blur-sm animate-fade-in">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
+                    <span className="text-yellow-200 font-bold text-sm">Trial Mode Active</span>
+                  </div>
+                  <span className="text-yellow-300 text-xs bg-yellow-500/20 px-2 py-1 rounded-full">
+                    FREE
+                  </span>
+                </div>
+                <p className="text-yellow-100/80 text-xs leading-relaxed">
+                  {dailyBuildsRemaining > 0 ? (
+                    <>
+                      <strong>{dailyBuildsRemaining}/3</strong> builds remaining today
+                    </>
+                  ) : (
+                    <>Daily limit reached. Resets tomorrow.</>
+                  )}
+                </p>
+                <button
+                  onClick={() => router.push('/pricing')}
+                  className="mt-3 w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all duration-300 hover:scale-105"
+                >
+                  Upgrade to Starter →
+                </button>
+              </div>
+            )}
+
             {/* Prompt Section */}
             <div className="glass-card p-6 animate-fade-in">
               <h2 className="h3 mb-4">Build Your App</h2>
@@ -294,27 +539,37 @@ export default function Build() {
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { value: "web", icon: "🌐", label: "Web App" },
-                      { value: "ios", icon: "📱", label: "iOS" },
-                      { value: "android", icon: "🤖", label: "Android" },
-                      { value: "multi", icon: "🚀", label: "Multi-Platform" }
+                      { value: "web", icon: "🌐", label: "Web App", available: true },
+                      { value: "ios", icon: "📱", label: "iOS", available: false },
+                      { value: "android", icon: "🤖", label: "Android", available: false },
+                      { value: "multi", icon: "🚀", label: "Multi-Platform", available: false }
                     ].map((option) => (
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() => setTarget(option.value)}
-                        disabled={isBuilding}
-                        className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                          target === option.value
+                        onClick={() => option.available && setTarget(option.value)}
+                        disabled={isBuilding || !option.available}
+                        className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 relative ${
+                          target === option.value && option.available
                             ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg shadow-purple-500/30"
-                            : "bg-white/5 hover:bg-white/10 text-white/70 border border-white/10"
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            : option.available
+                            ? "bg-white/5 hover:bg-white/10 text-white/70 border border-white/10"
+                            : "bg-white/5 text-white/30 border border-white/5 cursor-not-allowed opacity-60"
+                        }`}
                       >
                         <span className="mr-2">{option.icon}</span>
                         {option.label}
+                        {!option.available && (
+                          <span className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full shadow-lg">
+                            Unlocking in Beta
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
+                  <p className="text-white/40 text-xs mt-2">
+                    💡 Web Apps only during Pre-Beta. Mobile support launching with full Beta.
+                  </p>
                 </div>
 
                 <button
@@ -406,20 +661,11 @@ export default function Build() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDownload(build);
+                                handleDownload(build.id);
                               }}
                               className="flex-1 px-3 py-2 bg-green-500/80 hover:bg-green-500 text-white rounded-lg text-xs font-semibold transition-all shadow-md backdrop-blur-md"
                             >
                               ⬇️ Download
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenPublishModal(build);
-                              }}
-                              className="flex-1 px-3 py-2 bg-gradient-to-r from-purple-500/80 to-blue-500/80 hover:from-purple-500 hover:to-blue-500 text-white rounded-lg text-xs font-semibold transition-all shadow-md backdrop-blur-md"
-                            >
-                              📤 Publish
                             </button>
                           </>
                         )}
@@ -467,50 +713,39 @@ export default function Build() {
           {/* RIGHT - Live Preview */}
           <div className="lg:col-span-1">
             <div className="glass-card p-6 h-full animate-fade-in" style={{animationDelay: '300ms'}}>
-              <h2 className="h3 mb-4">Live Preview</h2>
-
-              <div className="glass-panel rounded-2xl border border-white/10 h-[calc(100%-4rem)] overflow-hidden">
-                {!selectedBuild ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                    <div className="w-24 h-24 mb-6 bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-full flex items-center justify-center">
-                      <span className="text-6xl">👁️</span>
-                    </div>
-                    <p className="text-white text-lg font-semibold mb-2">
-                      No preview yet
-                    </p>
-                    <p className="text-white/50 text-sm">
-                      Build an app to see a live preview
-                    </p>
-                  </div>
-                ) : selectedBuild.status === "complete" ? (
-                  <iframe
-                    src={`/preview/${selectedBuild.id}`}
-                    className="w-full h-full rounded-xl"
-                    title="App Preview"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                    <div className="w-20 h-20 mb-6 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-full flex items-center justify-center animate-pulse">
-                      <span className="text-5xl">⚙️</span>
-                    </div>
-                    <p className="text-white text-lg font-semibold mb-2">
-                      Generating UI...
-                    </p>
-                    <p className="text-white/50 text-sm mb-6">
-                      Building your app from your idea
-                    </p>
-                    {/* Skeleton */}
-                    <div className="w-full max-w-xs space-y-4 animate-pulse">
-                      <div className="h-12 bg-white/10 rounded-lg"></div>
-                      <div className="h-32 bg-white/10 rounded-lg"></div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="h-24 bg-white/10 rounded-lg"></div>
-                        <div className="h-24 bg-white/10 rounded-lg"></div>
-                      </div>
-                      <div className="h-10 bg-white/10 rounded-lg"></div>
-                    </div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="h3">Live Preview</h2>
+                {/* Status badge */}
+                {selectedBuildId && (
+                  <div className="flex items-center gap-2">
+                    {previewStatus === 'waiting' && (
+                      <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full border border-yellow-500/30">
+                        ⏳ Waiting
+                      </span>
+                    )}
+                    {previewStatus === 'preparing' && (
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full border border-blue-500/30 animate-pulse">
+                        ⚙️ Preparing
+                      </span>
+                    )}
+                    {previewStatus === 'ready' && (
+                      <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full border border-green-500/30">
+                        ✓ Ready
+                      </span>
+                    )}
                   </div>
                 )}
+              </div>
+
+              <div className="glass-panel rounded-2xl border border-white/10 h-[calc(100%-4rem)] overflow-hidden">
+                <LivePreviewPanel
+                  jobId={selectedBuildId}
+                  buildComplete={buildComplete}
+                  user={user}
+                  fileTreeFromSSE={fileTree}
+                  previewUrlFromSSE={previewUrl}
+                  uiReadyUrl={uiReadyUrl}
+                />
               </div>
             </div>
           </div>
@@ -646,6 +881,13 @@ export default function Build() {
         onClose={closePublishModal}
         onConfirm={handlePublish}
         buildPrompt={selectedBuild?.prompt}
+      />
+
+      {/* Paywall Popup */}
+      <PaywallPopup
+        open={isPaywallOpen}
+        onClose={() => setIsPaywallOpen(false)}
+        feature={paywallFeature}
       />
 
       {/* Toast Notification */}

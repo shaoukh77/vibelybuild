@@ -867,3 +867,164 @@ export async function markMessagesAsRead(conversationId, userId) {
 
   await Promise.all(batch);
 }
+
+// ========== PUBLISHED APPS (STORE) ==========
+
+/**
+ * Save published app to Firestore
+ * Collection: publishedApps
+ */
+export async function savePublishedApp({
+  jobId,
+  userId,
+  url,
+  title,
+  description,
+  publishStatus,
+  timestamp,
+  buildPath,
+  deploymentId,
+}) {
+  if (!jobId || !userId) {
+    throw new Error('jobId and userId are required');
+  }
+
+  const publishedAppRef = doc(db, 'publishedApps', jobId);
+  const appData = {
+    jobId,
+    userId,
+    url: url || '',
+    title: title || `App ${jobId.substring(0, 8)}`,
+    description: description || '',
+    publishStatus: publishStatus || 'published',
+    timestamp: timestamp || Date.now(),
+    buildPath: buildPath || '',
+    deploymentId: deploymentId || jobId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(publishedAppRef, appData);
+  return appData;
+}
+
+/**
+ * Get published app by jobId
+ */
+export async function getPublishedApp(jobId) {
+  if (!jobId) return null;
+
+  const publishedAppRef = doc(db, 'publishedApps', jobId);
+  const appSnap = await getDoc(publishedAppRef);
+
+  if (!appSnap.exists()) return null;
+
+  return {
+    id: appSnap.id,
+    ...appSnap.data(),
+  };
+}
+
+/**
+ * List all published apps (public access)
+ */
+export async function listPublishedApps(limitCount = 24) {
+  const appsRef = collection(db, 'publishedApps');
+  const q = query(
+    appsRef,
+    where('publishStatus', '==', 'published'),
+    orderBy('timestamp', 'desc'),
+    limit(limitCount)
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+}
+
+/**
+ * Subscribe to published apps (real-time)
+ */
+export function subscribeToPublishedApps(callback, limitCount = 24) {
+  const appsRef = collection(db, 'publishedApps');
+  const q = query(
+    appsRef,
+    where('publishStatus', '==', 'published'),
+    orderBy('timestamp', 'desc'),
+    limit(limitCount)
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const apps = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    callback(apps);
+  }, (error) => {
+    console.warn('Error subscribing to published apps:', error);
+    callback([]);
+  });
+}
+
+/**
+ * Get user's published apps
+ */
+export async function getUserPublishedAppsStore(userId, limitCount = 50) {
+  if (!userId) return [];
+
+  const appsRef = collection(db, 'publishedApps');
+  const q = query(
+    appsRef,
+    where('userId', '==', userId),
+    orderBy('timestamp', 'desc'),
+    limit(limitCount)
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+}
+
+/**
+ * Update published app
+ */
+export async function updatePublishedApp(jobId, updates) {
+  if (!jobId) {
+    throw new Error('jobId is required');
+  }
+
+  const publishedAppRef = doc(db, 'publishedApps', jobId);
+  await updateDoc(publishedAppRef, {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Unpublish app (set status to unpublished)
+ */
+export async function unpublishAppStore(jobId, userId) {
+  if (!jobId || !userId) {
+    throw new Error('jobId and userId are required');
+  }
+
+  // Verify ownership
+  const publishedApp = await getPublishedApp(jobId);
+  if (!publishedApp) {
+    throw new Error('App not found');
+  }
+
+  if (publishedApp.userId !== userId) {
+    throw new Error('Unauthorized: You do not own this app');
+  }
+
+  const publishedAppRef = doc(db, 'publishedApps', jobId);
+  await updateDoc(publishedAppRef, {
+    publishStatus: 'unpublished',
+    updatedAt: serverTimestamp(),
+  });
+}

@@ -63,6 +63,12 @@ export default function TopNav() {
           })}
         </div>
 
+        {/* Beta Badge */}
+        <div className="hidden md:flex items-center gap-2 bg-yellow-500/20 border border-yellow-500/50 rounded-full px-3 py-1.5 backdrop-blur-sm">
+          <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse"></span>
+          <span className="text-yellow-200 font-bold text-xs tracking-wide">PRE-BETA</span>
+        </div>
+
         {/* Right Side Actions */}
         <div className="flex items-center gap-3">
           {/* Notifications Bell */}

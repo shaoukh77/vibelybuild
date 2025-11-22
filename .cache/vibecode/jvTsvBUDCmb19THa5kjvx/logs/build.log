@@ -1,0 +1,11 @@
+{"step":"start","status":"info","detail":"🚀 Starting VibeCode build pipeline...","progress":0,"timestamp":1763725101073}
+{"step":"blueprint","status":"info","detail":"🧠 Analyzing your idea and generating app blueprint...","progress":10,"timestamp":1763725101073}
+{"step":"architecture","status":"info","detail":"📐 Planning architecture: 1 pages, 1 entities","progress":40,"timestamp":1763725102085}
+{"step":"codegen","status":"success","detail":"✅ Generated 13 files (Next.js app structure)","progress":70,"timestamp":1763725102085}
+{"step":"blueprint","status":"success","detail":"✨ Generated blueprint for \"Build Todo App\" (web app)","progress":30,"timestamp":1763725102084}
+{"step":"codegen","status":"info","detail":"💻 Generating project files from blueprint...","progress":50,"timestamp":1763725102085}
+{"step":"storage","status":"info","detail":"💾 Writing files to storage...","progress":80,"timestamp":1763725102085}
+{"step":"storage","status":"success","detail":"✅ Saved 13 files to storage","progress":90,"timestamp":1763725102170}
+{"step":"preview","status":"info","detail":"🎨 Starting live preview server with Next.js + Turbopack...","progress":95,"timestamp":1763725102171}
+{"step":"complete","status":"success","detail":"✅ Build complete! Your app is ready to preview and download.","progress":100,"timestamp":1763725225970}
+{"step":"preview","status":"success","detail":"✅ Live preview ready at port 4101!","progress":98,"timestamp":1763725225970}
