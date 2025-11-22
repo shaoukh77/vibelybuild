@@ -10,7 +10,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { verifyAuthToken } from '@/lib/firebase-admin';
+import { verifyAuthToken } from '@/lib/firebaseAdmin';
 import { savePublishedApp, getPublishedApp } from '@/lib/firestore';
 import { uploadToCloudflare } from '@/lib/cloudflareUploader';
 

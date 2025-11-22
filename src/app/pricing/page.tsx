@@ -73,8 +73,8 @@ const plans: PricingPlan[] = [
     badge: 'COMING SOON'
   },
   {
-    id: 'enterprise',
-    name: 'Enterprise',
+    id: 'elite',
+    name: 'Elite',
     price: 99,
     interval: 'month',
     description: 'For teams and organizations with custom needs',
@@ -88,7 +88,7 @@ const plans: PricingPlan[] = [
       'White-label options',
       'Dedicated account manager'
     ],
-    cta: 'Contact Sales',
+    cta: 'Coming Soon',
     available: false,
     badge: 'COMING SOON'
   }
@@ -98,6 +98,7 @@ export default function PricingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+  const [showComingSoonModal, setShowComingSoonModal] = useState(false);
 
   const handleSelectPlan = async (planId: string) => {
     if (!user) {
@@ -106,7 +107,8 @@ export default function PricingPage() {
     }
 
     if (planId !== 'starter') {
-      // Other plans not available yet
+      // Show coming soon modal for Pro/Elite plans
+      setShowComingSoonModal(true);
       return;
     }
 
@@ -301,6 +303,40 @@ export default function PricingPage() {
           </div>
         </div>
       </div>
+
+      {/* Coming Soon Modal */}
+      {showComingSoonModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowComingSoonModal(false)}>
+          <div className="bg-gradient-to-br from-purple-900/90 to-blue-900/90 border-2 border-purple-500/50 rounded-2xl p-8 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-4xl">🚀</span>
+              </div>
+              <h3 className="text-2xl font-bold mb-3">Pro Features Coming Soon!</h3>
+              <p className="text-white/70 mb-6 leading-relaxed">
+                Pro and Elite plans will unlock during our official Beta launch. These features include iOS/Android support, unlimited builds, advanced AI models, and team collaboration.
+              </p>
+              <p className="text-purple-300 text-sm mb-6 font-semibold">
+                Join the waitlist to get notified when Beta launches!
+              </p>
+              <div className="flex gap-3">
+                <Link
+                  href="/early-access"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 hover:shadow-lg hover:scale-105 rounded-lg font-semibold transition-all"
+                >
+                  Join Waitlist
+                </Link>
+                <button
+                  onClick={() => setShowComingSoonModal(false)}
+                  className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-lg font-semibold transition-all"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

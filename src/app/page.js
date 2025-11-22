@@ -2,6 +2,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import TopNav from "@/components/TopNav";
+import BetaRibbon from "@/components/BetaRibbon";
+import PreBetaNotice from "@/components/PreBetaNotice";
+import Footer from "@/components/Footer";
 
 export default function Home() {
   const [prompt, setPrompt] = useState("");
@@ -9,13 +12,11 @@ export default function Home() {
 
   return (
     <main className="min-h-screen relative overflow-x-hidden">
-      {/* PRE-BETA LAUNCH Banner */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 text-white py-3 px-4 text-center font-bold text-sm shadow-lg">
-        <div className="flex items-center justify-center gap-2 animate-pulse">
-          <span className="text-xl">🚀</span>
-          <span>PRE-BETA LAUNCH – Official Beta Coming Soon</span>
-        </div>
-      </div>
+      {/* Beta Ribbon */}
+      <BetaRibbon />
+
+      {/* Pre-Beta Notice Banner */}
+      <PreBetaNotice />
 
       {/* Subtle Animated Background Orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -277,8 +278,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer Spacer */}
-      <div className="h-20"></div>
+      {/* Footer */}
+      <Footer />
     </main>
   );
 }

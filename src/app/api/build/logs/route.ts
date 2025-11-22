@@ -163,7 +163,7 @@ function createLogStream(jobId: string): ReadableStream {
       const existingLogs = getJobLogs(jobId);
       existingLogs.forEach((log) => {
         sendEvent('message', {
-          log: log.detail || log.message || 'Build log',
+          log: log.detail || 'Build log',
           step: log.step,
           status: log.status,
           timestamp: log.timestamp,
@@ -188,7 +188,7 @@ function createLogStream(jobId: string): ReadableStream {
 
         newLogs.forEach((log) => {
           sendEvent('message', {
-            log: log.detail || log.message || 'Build log',
+            log: log.detail || 'Build log',
             step: log.step,
             status: log.status,
             timestamp: log.timestamp,

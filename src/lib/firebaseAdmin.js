@@ -62,3 +62,11 @@ export default admin;
 export const db = admin.firestore();
 export const auth = admin.auth();
 export const storage = admin.storage();
+
+// Utility function for verifying auth tokens
+export async function verifyAuthToken(token) {
+  if (!token) {
+    throw new Error('No token provided');
+  }
+  return await auth.verifyIdToken(token);
+}

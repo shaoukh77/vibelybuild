@@ -15,6 +15,9 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import TopNav from "@/components/TopNav";
+import BetaRibbon from "@/components/BetaRibbon";
+import PreBetaNotice from "@/components/PreBetaNotice";
+import Footer from "@/components/Footer";
 import PublishDialog from "@/components/PublishDialog";
 import PaywallPopup from "@/components/PaywallPopup";
 import TimeAgo from "@/components/TimeAgo";
@@ -490,6 +493,12 @@ export default function Build() {
 
   return (
     <main className="min-h-screen relative overflow-x-hidden">
+      {/* Beta Ribbon */}
+      <BetaRibbon />
+
+      {/* Pre-Beta Notice Banner */}
+      <PreBetaNotice />
+
       {/* Subtle Animated Background Orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="bg-orb bg-orb-purple w-96 h-96 top-1/4 left-1/4 opacity-10"></div>
@@ -933,8 +942,8 @@ export default function Build() {
         </section>
       </div>
 
-      {/* Bottom Spacing */}
-      <div className="h-16"></div>
+      {/* Footer */}
+      <Footer />
 
       {/* Publish Modal */}
       <PublishDialog

@@ -3,16 +3,25 @@
 @tailwind utilities;
 
 /* ========================================
-   BLISS WALLPAPER + GLASSMORPHISM THEME
+   BETA WALLPAPER + GLASSMORPHISM THEME
    ======================================== */
 
-/* Global Background - Bliss Wallpaper with dark overlay */
+/* Global Background - Beta Background with dark overlay */
 body {
   min-height: 100vh;
   background:
     linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)),
-    url('/bliss.jpg') center center / cover fixed;
+    url('/bg-beta.jpg') center center / cover no-repeat;
   background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
+}
+
+/* Mobile: Scrollable background for better performance */
+@media (max-width: 768px) {
+  body {
+    background-attachment: scroll;
+  }
 }
 
 /* Glass Card - Primary container style */

@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import TopNav from "@/components/TopNav";
+import BetaRibbon from "@/components/BetaRibbon";
+import PreBetaNotice from "@/components/PreBetaNotice";
+import Footer from "@/components/Footer";
 import BlissBackground from "@/components/BlissBackground";
 import PostComposer from "@/components/Feed/PostComposer";
 import PostCard from "@/components/Feed/PostCard";
@@ -157,6 +160,12 @@ export default function FeedPage() {
 
   return (
     <BlissBackground>
+      {/* Beta Ribbon */}
+      <BetaRibbon />
+
+      {/* Pre-Beta Notice Banner */}
+      <PreBetaNotice />
+
       {/* Main Content */}
 
       {/* TopNav - Full Width */}
@@ -396,6 +405,9 @@ export default function FeedPage() {
           animation-delay: 2000ms;
         }
       `}</style>
+
+      {/* Footer */}
+      <Footer />
     </BlissBackground>
   );
 }

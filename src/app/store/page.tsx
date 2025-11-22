@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import TopNav from "@/components/TopNav";
+import BetaRibbon from "@/components/BetaRibbon";
+import PreBetaNotice from "@/components/PreBetaNotice";
+import Footer from "@/components/Footer";
 import { getAppsFromStore, searchApps, filterAppsByTarget, sortApps, StoreApp } from "@/lib/store/getApps";
 import { formatPublishedDate, getAuthorName } from "@/lib/store/getAppDetails";
 import Image from "next/image";
@@ -59,13 +62,11 @@ export default function StorePage() {
 
   return (
     <main className="min-h-screen relative overflow-x-hidden">
-      {/* PRE-BETA LAUNCH Banner */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 text-white py-3 px-4 text-center font-bold text-sm shadow-lg">
-        <div className="flex items-center justify-center gap-2 animate-pulse">
-          <span className="text-xl">🚀</span>
-          <span>PRE-BETA LAUNCH – Official Beta Coming Soon</span>
-        </div>
-      </div>
+      {/* Beta Ribbon */}
+      <BetaRibbon />
+
+      {/* Pre-Beta Notice Banner */}
+      <PreBetaNotice />
 
       {/* Animated Background Orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -300,6 +301,9 @@ export default function StorePage() {
           </div>
         )}
       </section>
+
+      {/* Footer */}
+      <Footer />
     </main>
   );
 }
