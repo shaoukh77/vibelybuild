@@ -5,7 +5,7 @@
 
 import { doc, getDoc, setDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { StoreApp } from './getApps';
+import { StoreApp } from '@/lib/store/getApps';
 
 export interface AppDetails extends StoreApp {
   // Extended details (can add more fields as needed)
