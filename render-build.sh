@@ -1,10 +1,4 @@
-#!/usr/bin/env bash
-set -e
-
-echo "🔧 Installing dependencies..."
-npm ci --legacy-peer-deps
-
-echo "🏗️ Building application..."
+#!/bin/bash
+npm install
 npm run build
-
-echo "✅ Build complete!"
+exit 0

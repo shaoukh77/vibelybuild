@@ -10,8 +10,8 @@
 
 import { nanoid } from 'nanoid';
 import * as path from 'path';
-import { createProjectZip, validateProjectPath } from './zipUtils';
-import { capturePreviewScreenshot, validatePreviewUrl, generateFallbackScreenshot } from './screenshot';
+import { createProjectZip, validateProjectPath } from '@/lib/store/zipUtils';
+import { capturePreviewScreenshot, validatePreviewUrl, generateFallbackScreenshot } from '@/lib/store/screenshot';
 import { collection, doc, setDoc, serverTimestamp, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
