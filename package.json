@@ -37,7 +37,11 @@
     "puppeteer-core": "^22.15.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "undici": "^7.16.0",
     "unzipper": "^0.10.14",
+    "util-deprecate": "^1.0.2",
+    "wrappy": "^1.0.2",
+    "zip-stream": "^7.0.2",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
