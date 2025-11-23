@@ -5,6 +5,6 @@ echo "Installing dependencies..."
 npm install
 
 echo "Building Next.js..."
-npm run build
+npx next build
 
 echo "Build complete!"
