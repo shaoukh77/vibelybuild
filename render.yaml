@@ -2,11 +2,10 @@ services:
   - type: web
     name: vibelybuild
     env: node
-    branch: main
-    buildCommand: "npm install && npx next build"
-    startCommand: "npx next start -p $PORT"
+    startCommand: "npm start"
+    buildCommand: "./render-build.sh"
     envVars:
       - key: NODE_VERSION
-        value: 20
+        value: 20.18.0
       - key: PORT
         value: 10000
