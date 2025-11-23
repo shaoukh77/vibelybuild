@@ -4,15 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:backend": "tsx watch server/index.ts",
     "build": "next build",
-    "build:backend": "tsc --project tsconfig.backend.json",
     "start": "next start -p $PORT",
-    "start:backend": "node dist/server/index.js",
-    "lint": "next lint",
-    "deploy:vercel": "vercel --prod",
-    "deploy:railway": "railway up",
-    "deploy:render": "render deploy"
+    "lint": "next lint"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.69.0",
