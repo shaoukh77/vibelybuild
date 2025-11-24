@@ -1,11 +1,11 @@
 /**
- * Backend API Client
+ * Backend API Client (Serverless Edition)
  *
- * Secure communication with backend preview server on Railway/Render.
+ * All backend functionality now runs as Next.js API routes.
+ * No external backend server needed - fully Vercel-compatible!
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-const API_SECRET = process.env.API_SECRET_KEY;
+import { authFetch } from '../authFetch';
 
 interface BackendResponse<T = any> {
   success?: boolean;
@@ -14,44 +14,25 @@ interface BackendResponse<T = any> {
 }
 
 /**
- * Make authenticated request to backend
+ * Get preview status
  */
-async function backendFetch<T = any>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const url = `${BACKEND_URL}${endpoint}`;
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
-
-  // Add API secret for authentication
-  if (API_SECRET) {
-    headers['Authorization'] = `Bearer ${API_SECRET}`;
-  }
-
+export async function getBackendPreview(buildId: string): Promise<{
+  buildId: string;
+  url: string | null;
+  status: string;
+} | null> {
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(error.error || `Backend request failed: ${response.statusText}`);
-    }
-
-    return await response.json();
-  } catch (error: any) {
-    console.error('[BackendClient] Error:', error);
-    throw error;
+    const response = await authFetch(`/api/build/preview?jobId=${buildId}`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('[BackendClient] Failed to get preview:', error);
+    return null;
   }
 }
 
 /**
- * Start a preview on the backend server
+ * Start a preview (for serverless, this just checks if build is complete)
  */
 export async function startBackendPreview(
   buildId: string,
@@ -59,63 +40,82 @@ export async function startBackendPreview(
   userId: string
 ): Promise<{
   buildId: string;
-  url: string;
-  port: number;
+  url: string | null;
   status: string;
 }> {
-  const response = await backendFetch('/api/preview/start', {
-    method: 'POST',
-    body: JSON.stringify({ buildId, projectPath, userId }),
-  });
-
-  return response.preview;
-}
-
-/**
- * Get preview status from backend
- */
-export async function getBackendPreview(buildId: string): Promise<{
-  buildId: string;
-  url: string;
-  port: number;
-  status: string;
-  startTime: number;
-} | null> {
   try {
-    return await backendFetch(`/api/preview/${buildId}`);
-  } catch (error) {
-    return null;
+    // For serverless, we just check the preview status
+    const response = await authFetch(`/api/build/preview?jobId=${buildId}`);
+    const data = await response.json();
+
+    return {
+      buildId: data.buildId,
+      url: data.url,
+      status: data.status,
+    };
+  } catch (error: any) {
+    console.error('[BackendClient] Failed to start preview:', error);
+    throw error;
   }
 }
 
 /**
- * Stop a preview on the backend
+ * Stop a preview (no-op for serverless)
  */
 export async function stopBackendPreview(buildId: string): Promise<boolean> {
   try {
-    const response = await backendFetch(`/api/preview/${buildId}/stop`, {
+    const response = await authFetch(`/api/build/preview/stop`, {
       method: 'POST',
+      body: JSON.stringify({ jobId: buildId }),
     });
-    return response.success;
+    const data = await response.json();
+    return data.success;
   } catch (error) {
+    console.error('[BackendClient] Failed to stop preview:', error);
     return false;
   }
 }
 
 /**
+ * Restart a preview (for serverless, just refreshes the URL)
+ */
+export async function restartBackendPreview(buildId: string): Promise<{
+  buildId: string;
+  url: string | null;
+  status: string;
+}> {
+  try {
+    const response = await authFetch(`/api/build/preview/restart`, {
+      method: 'POST',
+      body: JSON.stringify({ jobId: buildId }),
+    });
+    const data = await response.json();
+    return data;
+  } catch (error: any) {
+    console.error('[BackendClient] Failed to restart preview:', error);
+    throw error;
+  }
+}
+
+/**
  * List all active previews
+ * Note: For serverless, this would need to query the job registry
  */
 export async function listBackendPreviews(): Promise<{
   count: number;
   previews: Array<{
     buildId: string;
     url: string;
-    port: number;
     status: string;
-    uptime: number;
   }>;
 }> {
-  return await backendFetch('/api/previews');
+  // For serverless, we'd need to implement a job listing endpoint
+  // For now, return empty array
+  console.warn('[BackendClient] listBackendPreviews not implemented for serverless');
+  return {
+    count: 0,
+    previews: [],
+  };
 }
 
 /**
@@ -124,8 +124,18 @@ export async function listBackendPreviews(): Promise<{
 export async function checkBackendHealth(): Promise<{
   status: string;
   timestamp: string;
-  uptime: number;
-  env: string;
+  uptime?: number;
+  env?: string;
 }> {
-  return await backendFetch('/health');
+  try {
+    const response = await fetch('/api/health');
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('[BackendClient] Health check failed:', error);
+    return {
+      status: 'error',
+      timestamp: new Date().toISOString(),
+    };
+  }
 }

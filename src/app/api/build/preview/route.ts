@@ -2,15 +2,13 @@
  * Preview Status API
  * GET /api/build/preview?jobId=XYZ
  *
- * Returns the current status and URL of a preview server.
+ * Returns the URL and status of a serverless preview.
  *
  * Response:
  * {
  *   buildId: string,
  *   url: string | null,
- *   status: "starting" | "ready" | "error" | "not_found",
- *   port?: number,
- *   startTime?: number,
+ *   status: "ready" | "building" | "error" | "not_found",
  *   error?: string
  * }
  */
@@ -18,7 +16,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyUser } from '@/lib/verifyUser';
 import { getJob } from '@/lib/builder/BuildOrchestrator';
-import { getPreview } from '../../../../../server/preview/previewManager';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -56,26 +53,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get preview server info
-    const previewInfo = getPreview(jobId);
+    // Check build status
+    if (job.status === 'complete') {
+      // Build is complete, preview is available at serverless endpoint
+      const previewUrl = `/api/preview/${jobId}`;
 
-    if (!previewInfo) {
+      return NextResponse.json({
+        buildId: jobId,
+        url: previewUrl,
+        status: 'ready',
+      });
+    } else if (job.status === 'failed' || job.status === 'cancelled') {
       return NextResponse.json({
         buildId: jobId,
         url: null,
-        status: 'not_found',
-        error: 'Preview server not started',
+        status: 'error',
+        error: job.error || `Build ${job.status}`,
+      });
+    } else {
+      // Build is still in progress
+      return NextResponse.json({
+        buildId: jobId,
+        url: null,
+        status: 'building',
       });
     }
-
-    return NextResponse.json({
-      buildId: previewInfo.buildId,
-      url: previewInfo.url,
-      status: previewInfo.status,
-      port: previewInfo.port,
-      startTime: previewInfo.startTime,
-      error: previewInfo.error,
-    });
 
   } catch (error: any) {
     console.error('[Preview API] Error:', error);

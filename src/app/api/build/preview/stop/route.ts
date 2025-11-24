@@ -1,8 +1,9 @@
 /**
- * Preview Stop API
+ * Preview Stop API (No-op for serverless)
  * POST /api/build/preview/stop
  *
- * Stops the preview server for a build.
+ * Serverless previews don't need to be stopped - they're stateless.
+ * This endpoint exists for backward compatibility.
  *
  * Request body:
  * {
@@ -12,14 +13,14 @@
  * Response:
  * {
  *   success: boolean,
- *   buildId: string
+ *   buildId: string,
+ *   message: string
  * }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyUser } from '@/lib/verifyUser';
 import { getJob } from '@/lib/builder/BuildOrchestrator';
-import { stopPreview } from '../../../../../../server/preview/previewManager';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -57,14 +58,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[Preview Stop] Stopping preview for job ${jobId}`);
-
-    // Stop the preview server
-    const success = await stopPreview(jobId);
-
+    // Serverless previews are stateless - no need to stop
     return NextResponse.json({
-      success,
+      success: true,
       buildId: jobId,
+      message: 'Serverless previews are stateless and do not need to be stopped',
     });
 
   } catch (error: any) {

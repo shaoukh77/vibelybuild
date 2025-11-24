@@ -1,17 +1,20 @@
 /**
- * Attach Preview - Helper to integrate preview into build pipeline
+ * Attach Preview - Serverless Edition
  *
- * PHASE 1 & 2 IMPROVEMENTS:
- * - Emit "ui_ready" SSE event when Next.js server is fully ready
- * - Better error handling
- * - Proper callback integration
+ * Generates preview URLs for completed builds.
+ * Previews are served on-demand via /api/preview/[jobId]
+ *
+ * NOTE: This is a simplified version for serverless deployment.
+ * No preview servers are spawned - previews are stateless.
  */
 
-import { startPreview, getPreviewUrl } from '../../../server/preview/previewManager';
 import { addJobLog, emitUIReadyEvent } from '../builder/BuildOrchestrator';
 
 /**
- * Attach a live preview server to a completed build
+ * Attach a serverless preview to a completed build
+ *
+ * Since previews are serverless, this just generates the preview URL
+ * and emits the ui_ready event.
  */
 export async function attachPreviewToBuild(
   jobId: string,
@@ -19,58 +22,32 @@ export async function attachPreviewToBuild(
   userId: string
 ): Promise<string | null> {
   try {
-    console.log(`[AttachPreview] 🎨 Attaching preview to build ${jobId}`);
+    console.log(`[AttachPreview] 🎨 Generating preview URL for build ${jobId}`);
 
     addJobLog(jobId, {
       step: 'preview',
       status: 'info',
-      detail: '🎨 Starting live preview server with Next.js + Turbopack...',
+      detail: '🎨 Preparing serverless preview...',
       progress: 95,
     });
 
-    // Start the preview server with onReady callback
-    const serverInfo = await startPreview(
-      jobId,
-      projectPath,
-      userId,
-      () => {
-        // This callback fires when Next.js prints "Ready in X.Xs"
-        console.log(`[AttachPreview] ✅ UI READY for build ${jobId}!`);
+    // Generate preview URL (serverless endpoint)
+    const previewUrl = `/api/preview/${jobId}`;
 
-        addJobLog(jobId, {
-          step: 'preview',
-          status: 'success',
-          detail: `✅ Preview server compiled and ready!`,
-          progress: 99,
-        });
+    addJobLog(jobId, {
+      step: 'preview',
+      status: 'success',
+      detail: '✅ Preview ready! Click "View Preview" to see your app.',
+      progress: 99,
+    });
 
-        // Emit SSE event "ui_ready"
-        emitUIReadyEvent(jobId, serverInfo.url);
-      }
-    );
+    // Emit SSE event "ui_ready"
+    console.log(`[AttachPreview] ✅ Preview URL: ${previewUrl}`);
+    emitUIReadyEvent(jobId, previewUrl);
 
-    if (serverInfo.status === 'ready' || serverInfo.status === 'starting') {
-      addJobLog(jobId, {
-        step: 'preview',
-        status: 'info',
-        detail: `🎬 Preview server started at port ${serverInfo.port}. Waiting for Next.js compilation...`,
-        progress: 97,
-      });
-
-      console.log(`[AttachPreview] ✅ Preview URL: ${serverInfo.url}`);
-
-      return serverInfo.url;
-    } else {
-      addJobLog(jobId, {
-        step: 'preview',
-        status: 'warn',
-        detail: '⚠️ Preview server encountered an issue. Check logs.',
-      });
-
-      return serverInfo.url;
-    }
+    return previewUrl;
   } catch (error: any) {
-    console.error(`[AttachPreview] ❌ Failed to attach preview:`, error);
+    console.error(`[AttachPreview] ❌ Failed to generate preview:`, error);
 
     addJobLog(jobId, {
       step: 'preview',
@@ -83,8 +60,11 @@ export async function attachPreviewToBuild(
 }
 
 /**
- * Get preview URL for a build (if one exists)
+ * Get preview URL for a build
+ *
+ * For serverless previews, this simply returns the API route path
  */
 export function getPreviewUrlForBuild(jobId: string): string | null {
-  return getPreviewUrl(jobId);
+  if (!jobId) return null;
+  return `/api/preview/${jobId}`;
 }

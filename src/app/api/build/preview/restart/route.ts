@@ -1,9 +1,9 @@
 /**
- * Preview Restart API
+ * Preview Restart API (Serverless)
  * POST /api/build/preview/restart
  *
- * Restarts the preview server for a build.
- * Useful for hot-reloading or recovering from errors.
+ * For serverless previews, "restart" just means getting the current preview URL.
+ * Previews are stateless and regenerated on each request.
  *
  * Request body:
  * {
@@ -14,15 +14,13 @@
  * {
  *   buildId: string,
  *   url: string | null,
- *   status: "starting" | "ready" | "error",
- *   port?: number
+ *   status: "ready" | "error"
  * }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyUser } from '@/lib/verifyUser';
 import { getJob } from '@/lib/builder/BuildOrchestrator';
-import { restartPreview } from '../../../../../../server/preview/previewManager';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -60,25 +58,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[Preview Restart] Restarting preview for job ${jobId}`);
-
-    // Restart the preview server
-    const previewInfo = await restartPreview(jobId, authUser.uid);
-
-    if (!previewInfo) {
-      return NextResponse.json(
-        { error: 'Failed to restart preview server' },
-        { status: 500 }
-      );
+    // For serverless, just return the preview URL if build is complete
+    if (job.status === 'complete') {
+      return NextResponse.json({
+        buildId: jobId,
+        url: `/api/preview/${jobId}`,
+        status: 'ready',
+      });
+    } else {
+      return NextResponse.json({
+        buildId: jobId,
+        url: null,
+        status: 'error',
+        error: `Build is ${job.status}`,
+      });
     }
-
-    return NextResponse.json({
-      buildId: previewInfo.buildId,
-      url: previewInfo.url,
-      status: previewInfo.status,
-      port: previewInfo.port,
-      startTime: previewInfo.startTime,
-    });
 
   } catch (error: any) {
     console.error('[Preview Restart] Error:', error);
