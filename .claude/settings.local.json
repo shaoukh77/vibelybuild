@@ -32,7 +32,8 @@
       "Bash(npm view:*)",
       "Bash(npm uninstall:*)",
       "Bash(yarn install)",
-      "Bash([ -d \".next\" ])"
+      "Bash([ -d \".next\" ])",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []
