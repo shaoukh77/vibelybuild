@@ -171,7 +171,7 @@ export default function MyPublishedApps() {
                   <div className="flex-1 min-w-0">
                     <h3
                       className="text-white font-semibold mb-1 cursor-pointer hover:text-blue-300 transition-colors"
-                      onClick={() => router.push(`/store/${app.id}`)}
+                      onClick={() => router.push(`/store/app/${app.id}`)}
                     >
                       {app.title}
                     </h3>
@@ -190,7 +190,7 @@ export default function MyPublishedApps() {
                   <div className="flex gap-2 flex-shrink-0">
                     {app.status === 'published' && (
                       <button
-                        onClick={() => router.push(`/store/${app.id}`)}
+                        onClick={() => router.push(`/store/app/${app.id}`)}
                         className="pill bg-blue-500/20 text-blue-200 hover:bg-blue-500/30 text-xs"
                       >
                         Open
