@@ -516,10 +516,10 @@ export default function Build() {
         {/* Page Header */}
         <div className="mb-8 text-center animate-fade-in">
           <h1 className="h1 mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-blue-200">
-            Build Real Apps with AI
+            VibelyBuild.AI – Build Smarter Apps Automatically
           </h1>
           <p className="sub max-w-2xl mx-auto">
-            Describe your vision → Get a full-stack app with auth, database, and payments. Deploy-ready in minutes.
+            Use AI to generate full-stack applications, deploy instantly, and scale without limits.
           </p>
         </div>
 

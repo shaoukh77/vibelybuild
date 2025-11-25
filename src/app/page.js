@@ -46,11 +46,11 @@ export default function Home() {
 
           {/* Main Headline */}
           <h1 className="h1 mb-6">
-            Build Real Apps with <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-blue-400 to-purple-400">AI</span>
+            VibelyBuild.AI – Build Smarter Apps <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-blue-400 to-purple-400">Automatically</span>
           </h1>
 
           <p className="sub max-w-3xl mx-auto mb-8">
-            Transform your app ideas into full-stack applications. Just describe what you want—we handle the code, database, auth, and deployment.
+            Use AI to generate full-stack applications, deploy instantly, and scale without limits.
           </p>
 
           {/* Pre-Beta Development Status */}
