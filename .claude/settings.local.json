@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(npm ci)",
+      "Bash(firebase --version:*)",
+      "Bash(firebase emulators:start:*)",
+      "Bash(npm run build:*)",
+      "Bash(firebase login:list:*)",
+      "Bash(lsof:*)",
+      "Bash(netstat:*)",
+      "Bash(cat:*)",
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(test:*)",
+      "Bash(/dev/null --include=\"*.js\" --include=\"*.ts\" --include=\"*.jsx\" --include=\"*.tsx\" -l)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(node --version:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(chmod:*)",
+      "Bash(npm --version:*)",
+      "Bash([ -d \"node_modules\" ])",
+      "Bash(cd:*)",
+      "Bash(git init:*)",
+      "Bash(npm run build:backend:*)",
+      "Bash(npm view:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(yarn install)",
+      "Bash([ -d \".next\" ])"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
