@@ -58,15 +58,67 @@ if (!admin.apps.length) {
 // Export the admin instance directly
 export default admin;
 
-// Export common services as shortcuts
-export const db = admin.firestore();
-export const auth = admin.auth();
-export const storage = admin.storage();
+// Function to get initialized admin instance
+export function getAdminApp() {
+  if (!admin.apps.length) {
+    throw new Error('Firebase Admin not initialized. Check your environment variables.');
+  }
+  return admin;
+}
+
+// Lazy-loaded service getters (use these for runtime access)
+export function getDb() {
+  if (!admin.apps.length) {
+    throw new Error('Firebase Admin not initialized');
+  }
+  return admin.firestore();
+}
+
+export function getAuth() {
+  if (!admin.apps.length) {
+    throw new Error('Firebase Admin not initialized');
+  }
+  return admin.auth();
+}
+
+export function getStorage() {
+  if (!admin.apps.length) {
+    throw new Error('Firebase Admin not initialized');
+  }
+  return admin.storage();
+}
+
+// Create stub objects for build-time to prevent errors
+// At runtime (when Firebase is initialized), these will work properly
+const createStub = (name) => new Proxy({}, {
+  get() {
+    if (typeof window === 'undefined' && !admin.apps.length) {
+      // Build time - return another stub
+      return createStub(name);
+    }
+    throw new Error(`Firebase Admin ${name} not initialized`);
+  }
+});
+
+/**
+ * @type {admin.firestore.Firestore}
+ */
+export const db = admin.apps.length ? admin.firestore() : createStub('Firestore');
+
+/**
+ * @type {admin.auth.Auth}
+ */
+export const auth = admin.apps.length ? admin.auth() : createStub('Auth');
+
+/**
+ * @type {admin.storage.Storage}
+ */
+export const storage = admin.apps.length ? admin.storage() : createStub('Storage');
 
 // Utility function for verifying auth tokens
 export async function verifyAuthToken(token) {
   if (!token) {
     throw new Error('No token provided');
   }
-  return await auth.verifyIdToken(token);
+  return await getAuth().verifyIdToken(token);
 }

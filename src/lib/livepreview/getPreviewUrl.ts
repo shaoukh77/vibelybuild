@@ -1,10 +1,15 @@
 /**
- * Get Preview URL Utility
+ * Get Preview URL Utility - Serverless Edition
  *
  * Helper functions to get and manage preview URLs for builds.
+ * Adapted for serverless deployment without preview manager.
  */
 
-import { getPreview, getPreviewUrl as getPreviewUrlFromManager } from '../../../server/preview/previewManager';
+interface PreviewInfo {
+  buildId: string;
+  url: string;
+  status: 'starting' | 'ready' | 'error';
+}
 
 /**
  * Get preview URL for a build ID
@@ -13,7 +18,8 @@ import { getPreview, getPreviewUrl as getPreviewUrlFromManager } from '../../../
  * @returns Preview URL or null if not found
  */
 export function getPreviewUrl(buildId: string): string | null {
-  return getPreviewUrlFromManager(buildId);
+  if (!buildId) return null;
+  return `/api/preview/${buildId}`;
 }
 
 /**
@@ -22,8 +28,14 @@ export function getPreviewUrl(buildId: string): string | null {
  * @param buildId - The build/job ID
  * @returns Preview server info or null
  */
-export function getPreviewInfo(buildId: string) {
-  return getPreview(buildId);
+export function getPreviewInfo(buildId: string): PreviewInfo | null {
+  if (!buildId) return null;
+
+  return {
+    buildId,
+    url: `/api/preview/${buildId}`,
+    status: 'ready'
+  };
 }
 
 /**
@@ -33,8 +45,7 @@ export function getPreviewInfo(buildId: string) {
  * @returns True if preview is ready
  */
 export function isPreviewReady(buildId: string): boolean {
-  const preview = getPreview(buildId);
-  return preview !== null && preview.status === 'ready';
+  return !!buildId;
 }
 
 /**
@@ -44,7 +55,7 @@ export function isPreviewReady(buildId: string): boolean {
  * @returns True if preview exists
  */
 export function hasPreview(buildId: string): boolean {
-  return getPreview(buildId) !== null;
+  return !!buildId;
 }
 
 /**
@@ -54,6 +65,5 @@ export function hasPreview(buildId: string): boolean {
  * @returns Status string or 'not_found'
  */
 export function getPreviewStatus(buildId: string): 'starting' | 'ready' | 'error' | 'not_found' {
-  const preview = getPreview(buildId);
-  return preview ? preview.status : 'not_found';
+  return buildId ? 'ready' : 'not_found';
 }

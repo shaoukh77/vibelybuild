@@ -7,14 +7,33 @@
 import OpenAI from 'openai';
 import Groq from 'groq-sdk';
 
-// Initialize clients
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy-initialized clients
+let openaiClient = null;
+let groqClient = null;
 
-const groq = process.env.GROQ_API_KEY ? new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-}) : null;
+/**
+ * Get or initialize OpenAI client
+ */
+function getOpenAIClient() {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || 'dummy-key-for-build',
+    });
+  }
+  return openaiClient;
+}
+
+/**
+ * Get or initialize Groq client
+ */
+function getGroqClient() {
+  if (!groqClient && process.env.GROQ_API_KEY) {
+    groqClient = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+  }
+  return groqClient;
+}
 
 // Model configuration
 const GPT_MODEL = process.env.OPENAI_MODEL || 'gpt-4-turbo';
@@ -101,6 +120,7 @@ Focus on creating a complete, production-ready structure.`;
 
   try {
     // Try Groq first (faster)
+    const groq = getGroqClient();
     if (groq) {
       const completion = await groq.chat.completions.create({
         model: GROQ_MODEL,
@@ -117,6 +137,7 @@ Focus on creating a complete, production-ready structure.`;
     }
 
     // Fallback to GPT-4
+    const openai = getOpenAIClient();
     const completion = await openai.chat.completions.create({
       model: GPT_MODEL,
       messages: [
